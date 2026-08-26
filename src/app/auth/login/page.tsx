@@ -315,11 +315,22 @@ export default function LoginPage() {
                             />
                         </button>
 
-                        <p className="mt-3 text-center text-xs text-slate-600">
-                            Have an employee ID?
-                            Join your company
-                            team.
+                        <p className="mt-3 text-center text-xs text-slate-500">
+                            Have an employee ID? Join your company team.
                         </p>
+
+                        {/* SIGN UP / REGISTER LINK */}
+                        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
+                            <p className="text-sm text-slate-400">
+                                Don&apos;t have an account?{" "}
+                                <Link
+                                    href="/auth/register"
+                                    className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline transition"
+                                >
+                                    Sign up
+                                </Link>
+                            </p>
+                        </div>
                     </div>
 
                     {/* SECURITY */}
