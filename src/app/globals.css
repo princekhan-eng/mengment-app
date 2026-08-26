@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #020617;
+  color: #f8fafc;
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* Modern Dark Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b #090d16;
+}
+
+/* Responsive Utilities & Touch targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Safe area padding for mobile notches */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 16px);
+}
+
+/* Custom Responsive Animations */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
