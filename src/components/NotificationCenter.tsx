@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Bell, CheckCheck, MessageSquare, CheckCircle2, AlertCircle, Info, Trash2 } from "lucide-react";
 import { getSocket } from "@/lib/socketClient";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface INotif {
     _id?: string;
@@ -23,6 +24,27 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ currentUserId }: NotificationCenterProps) {
+    const queryClient = useQueryClient();
+    const [realUserId, setRealUserId] = useState<string>(currentUserId);
+
+    useEffect(() => {
+        const fetchRealUser = async () => {
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(currentUserId);
+            if (!isObjectId) {
+                try {
+                    const res = await fetch("/API/getme");
+                    const data = await res.json();
+                    if (data.success && data.user?.id) {
+                        setRealUserId(data.user.id);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch real user ID inside NotificationCenter:", err);
+                }
+            }
+        };
+        fetchRealUser();
+    }, [currentUserId]);
+
     const {
         notifications,
         unreadCount,
@@ -31,26 +53,68 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
         markAllRead,
         clearAll: clearAllNotifications,
         deleteNotification: removeNotif,
-    } = useNotifications(currentUserId);
+    } = useNotifications(realUserId);
 
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!currentUserId) return;
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(realUserId);
+        if (!isObjectId) return;
 
+        console.log("[NotificationCenter] Connecting socket for notifications on user:", realUserId);
         const socket = getSocket();
 
-        const handleNewNotification = () => {
-            refetch();
+        const handleConnect = () => {
+            console.log("[NotificationCenter] Socket connected. Joining user room:", `user_${realUserId}`);
+            socket.emit("user_online", {
+                userId: realUserId,
+                name: "User",
+                role: "member",
+            });
+            socket.emit("join_room", `user_${realUserId}`);
         };
 
+        if (socket.connected) {
+            handleConnect();
+        }
+
+        const handleNewNotification = (notif: any) => {
+            console.log("[NotificationCenter] Socket received new_notification:", notif);
+            
+            // Instantly append to the query cache to avoid race conditions!
+            queryClient.setQueryData<any>(["notifications", realUserId], (old: any) => {
+                const oldNotifs = old?.notifications || [];
+                const exists = oldNotifs.some(
+                    (n: any) =>
+                        n._id === notif._id ||
+                        (n.createdAt === notif.createdAt && n.message === notif.message)
+                );
+                if (exists) return old;
+                return {
+                    success: true,
+                    notifications: [notif, ...oldNotifs],
+                    unreadCount: (old?.unreadCount || 0) + 1,
+                };
+            });
+        };
+
+        socket.on("connect", handleConnect);
         socket.on("new_notification", handleNewNotification);
 
+        // Run once immediately
+        socket.emit("user_online", {
+            userId: realUserId,
+            name: "User",
+            role: "member",
+        });
+        socket.emit("join_room", `user_${realUserId}`);
+
         return () => {
+            socket.off("connect", handleConnect);
             socket.off("new_notification", handleNewNotification);
         };
-    }, [currentUserId, refetch]);
+    }, [realUserId, queryClient]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

@@ -79,6 +79,30 @@ app.prepare().then(() => {
                     link: "/dashboard/manager", // or current dashboard
                     createdAt: new Date(),
                 });
+            } else if (messageData.roomId && !messageData.roomId.startsWith("dm_")) {
+                // If it's a channel message, broadcast socket notification to all online users' private rooms (except the sender)
+                const channelDisplayName =
+                    messageData.roomId === "general"
+                        ? "General Announcements"
+                        : messageData.roomId === "dev-tasks"
+                        ? "Dev Team Chat"
+                        : messageData.roomId === "qa-bugs"
+                        ? "QA Testing & Bugs"
+                        : messageData.roomId;
+
+                const senderUserId = messageData.senderId;
+
+                for (const [userId, userDetails] of onlineUsers.entries()) {
+                    if (userId !== senderUserId) {
+                        io.to(`user_${userId}`).emit("new_notification", {
+                            type: "new_message",
+                            title: `New message in #${channelDisplayName}`,
+                            message: `${messageData.senderName}: ${messageData.content || "Sent an attachment"}`,
+                            link: "/dashboard/manager",
+                            createdAt: new Date(),
+                        });
+                    }
+                }
             }
         });
 

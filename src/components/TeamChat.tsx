@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
     Send,
-    Hash,
     MessageSquare,
     Download,
     Image as ImageIcon,
@@ -15,6 +14,10 @@ import {
     Trash2,
     Menu,
     X,
+    Mic,
+    Square,
+    Volume2,
+    Loader2,
 } from "lucide-react";
 import { getSocket } from "@/lib/socketClient";
 import ImageKitUploader, { UploadedFile } from "./ImageKitUploader";
@@ -45,14 +48,16 @@ interface MessageItem {
 }
 
 const DEFAULT_CHANNELS = [
-    { id: "general", name: "general-announcements", desc: "Company-wide updates & general discussion" },
-    { id: "dev-tasks", name: "dev-team-chat", desc: "Developer tasks & codebase support" },
-    { id: "qa-bugs", name: "qa-testing-bugs", desc: "Bug reports & test verifications" },
+    { id: "general", name: "General Announcements", desc: "Company-wide updates & general discussion" },
+    { id: "dev-tasks", name: "Dev Team Chat", desc: "Developer tasks & codebase support" },
+    { id: "qa-bugs", name: "QA Testing & Bugs", desc: "Bug reports & test verifications" },
 ];
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useTeamMessages } from "@/hooks/useTeamMessages";
 
 export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProps) {
+    const queryClient = useQueryClient();
     const [selectedRoom, setSelectedRoom] = useState<string>("general");
     const [selectedRecipient, setSelectedRecipient] = useState<ChatUser | null>(null);
 
@@ -77,24 +82,55 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Voice Message states
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
-        if (!currentUser || !currentUser.id) return;
+        if (!currentUser || !currentUser.id || !selectedRoom) return;
 
         const socket = getSocket();
 
-        socket.emit("user_online", {
-            userId: currentUser.id,
-            name: currentUser.name,
-            role: currentUser.role,
-        });
+        const handleConnect = () => {
+            console.log("[TeamChat] Socket connected/reconnected. Joining room:", selectedRoom);
+            socket.emit("user_online", {
+                userId: currentUser.id,
+                name: currentUser.name,
+                role: currentUser.role,
+            });
+            socket.emit("join_room", selectedRoom);
+        };
+
+        if (socket.connected) {
+            handleConnect();
+        }
 
         const handleOnlineUsers = (users: any[]) => {
             setOnlineUsers(users);
         };
 
         const handleReceiveMessage = (msg: MessageItem) => {
+            console.log("[TeamChat] Socket received message:", msg, "selectedRoom:", selectedRoom);
             if (msg.roomId === selectedRoom) {
-                refetch();
+                console.log("[TeamChat] Room matched selectedRoom. Appending to query cache...");
+                queryClient.setQueryData<MessageItem[]>(["messages", selectedRoom], (old) => {
+                    const oldMessages = old || [];
+                    const exists = oldMessages.some(
+                        (m) =>
+                            m._id === msg._id ||
+                            (m.createdAt === msg.createdAt &&
+                                m.senderId === msg.senderId &&
+                                m.content === msg.content)
+                    );
+                    if (exists) return oldMessages;
+                    return [...oldMessages, msg];
+                });
+            } else {
+                console.log("[TeamChat] Room does not match selectedRoom. No action.");
             }
         };
 
@@ -110,29 +146,141 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
             }
         };
 
+        socket.on("connect", handleConnect);
         socket.on("online_users_list", handleOnlineUsers);
         socket.on("receive_message", handleReceiveMessage);
         socket.on("user_typing", handleUserTyping);
         socket.on("user_stop_typing", handleUserStopTyping);
 
+        // Run once on mount / selectedRoom change
+        socket.emit("user_online", {
+            userId: currentUser.id,
+            name: currentUser.name,
+            role: currentUser.role,
+        });
+        socket.emit("join_room", selectedRoom);
+
         return () => {
+            socket.off("connect", handleConnect);
             socket.off("online_users_list", handleOnlineUsers);
             socket.off("receive_message", handleReceiveMessage);
             socket.off("user_typing", handleUserTyping);
             socket.off("user_stop_typing", handleUserStopTyping);
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+            }
         };
-    }, [currentUser, selectedRoom, refetch]);
-
-    useEffect(() => {
-        if (!selectedRoom) return;
-
-        const socket = getSocket();
-        socket.emit("join_room", selectedRoom);
-    }, [selectedRoom]);
+    }, [currentUser, selectedRoom, queryClient]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, typingUser]);
+
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                stream.getTracks().forEach((track) => track.stop());
+                await uploadVoiceMessage(audioBlob);
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingDuration((prev) => prev + 1);
+            }, 1000);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Failed to access microphone. Please check your browser permissions.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+                recordingIntervalRef.current = null;
+            }
+        }
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.onstop = () => {
+                if (mediaRecorderRef.current) {
+                    const stream = mediaRecorderRef.current.stream;
+                    stream.getTracks().forEach((track) => track.stop());
+                }
+            };
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+                recordingIntervalRef.current = null;
+            }
+            setRecordingDuration(0);
+        }
+    };
+
+    const uploadVoiceMessage = async (blob: Blob) => {
+        setIsUploadingVoice(true);
+        try {
+            const file = new File([blob], `voice_message_${Date.now()}.webm`, {
+                type: "audio/webm",
+            });
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/API/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Failed to upload voice message");
+            }
+
+            const uploaded: UploadedFile = {
+                url: data.url,
+                name: `Voice Message (${formatDuration(recordingDuration)})`,
+                fileType: "audio/webm",
+                size: data.size || file.size,
+                fileId: data.fileId,
+            };
+
+            setAttachments((prev) => [...prev, uploaded]);
+        } catch (err: any) {
+            console.error("Voice message upload failed:", err);
+            alert("Failed to upload voice message: " + err.message);
+        } finally {
+            setIsUploadingVoice(false);
+            setRecordingDuration(0);
+        }
+    };
 
     const selectChannel = (channelId: string) => {
         setSelectedRoom(channelId);
@@ -180,6 +328,7 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
         };
 
         const socket = getSocket();
+        console.log("[TeamChat] Emitting send_message via socket:", newMsgData);
         socket.emit("send_message", newMsgData);
         socket.emit("stop_typing", { roomId: selectedRoom });
 
@@ -256,7 +405,7 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
             <ConfirmModal
                 isOpen={isClearRoomModalOpen}
                 title="Clear Entire Chat"
-                message={`Are you sure you want to delete ALL messages in #${selectedRecipient ? selectedRecipient.name : selectedRoom} permanently? This action cannot be undone.`}
+                message={`Are you sure you want to delete ALL messages in ${selectedRecipient ? selectedRecipient.name : (DEFAULT_CHANNELS.find((c) => c.id === selectedRoom)?.name || selectedRoom)} permanently? This action cannot be undone.`}
                 confirmText="Clear All Messages"
                 cancelText="Cancel"
                 type="danger"
@@ -316,7 +465,7 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
                                             : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
                                     }`}
                                 >
-                                    <Hash size={16} className={selectedRoom === ch.id ? "text-white" : "text-slate-400"} />
+                                    <MessageSquare size={16} className={selectedRoom === ch.id ? "text-white" : "text-slate-400"} />
                                     <span className="truncate">{ch.name}</span>
                                 </button>
                             ))}
@@ -409,11 +558,11 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
                         ) : (
                             <>
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-                                    <Hash size={20} />
+                                    <MessageSquare size={20} />
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-white text-sm">
-                                        #{DEFAULT_CHANNELS.find((c) => c.id === selectedRoom)?.name || selectedRoom}
+                                        {DEFAULT_CHANNELS.find((c) => c.id === selectedRoom)?.name || selectedRoom}
                                     </h4>
                                     <p className="text-xs text-slate-400">
                                         {DEFAULT_CHANNELS.find((c) => c.id === selectedRoom)?.desc || "Team communication channel"}
@@ -489,39 +638,63 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
 
                                             {msg.attachments && msg.attachments.length > 0 && (
                                                 <div className="mt-2 space-y-2">
-                                                    {msg.attachments.map((file, i) => (
-                                                        <div key={i} className="rounded-lg overflow-hidden border border-slate-700/80 bg-slate-950/40 p-2">
-                                                            {file.fileType?.startsWith("image/") ? (
-                                                                <div>
-                                                                    <img
-                                                                        src={file.url}
-                                                                        alt={file.name}
-                                                                        className="max-h-56 w-full object-cover rounded-md mb-1.5"
-                                                                    />
+                                                    {msg.attachments.map((file, i) => {
+                                                        const isAudio = file.fileType?.startsWith("audio/") || file.name.endsWith(".webm") || file.name.endsWith(".wav") || file.name.endsWith(".mp3");
+                                                        return (
+                                                            <div key={i} className="rounded-lg overflow-hidden border border-slate-700/80 bg-slate-950/40 p-2">
+                                                                {file.fileType?.startsWith("image/") ? (
+                                                                    <div>
+                                                                        <img
+                                                                            src={file.url}
+                                                                            alt={file.name}
+                                                                            className="max-h-56 w-full object-cover rounded-md mb-1.5"
+                                                                        />
+                                                                        <a
+                                                                            href={file.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center justify-between text-xs text-indigo-300 hover:underline"
+                                                                        >
+                                                                            <span className="truncate">{file.name}</span>
+                                                                            <Download size={14} />
+                                                                        </a>
+                                                                    </div>
+                                                                ) : isAudio ? (
+                                                                    <div className="flex flex-col gap-1.5 p-1">
+                                                                        <div className="flex items-center gap-2 text-xs text-slate-300">
+                                                                            <Volume2 size={14} className="text-rose-400 shrink-0 animate-pulse" />
+                                                                            <span className="font-semibold truncate flex-1">{file.name}</span>
+                                                                        </div>
+                                                                        <audio
+                                                                            src={file.url}
+                                                                            controls
+                                                                            className="w-full h-8 mt-1 rounded bg-slate-900 border border-slate-700/60"
+                                                                            preload="metadata"
+                                                                        />
+                                                                        <a
+                                                                            href={file.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex justify-end text-[10px] text-indigo-300 hover:underline px-1"
+                                                                        >
+                                                                            Download Audio
+                                                                        </a>
+                                                                    </div>
+                                                                ) : (
                                                                     <a
                                                                         href={file.url}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="flex items-center justify-between text-xs text-indigo-300 hover:underline"
+                                                                        className="flex items-center gap-2 text-xs text-indigo-300 hover:underline p-1"
                                                                     >
-                                                                        <span className="truncate">{file.name}</span>
+                                                                        <FileText size={16} className="text-indigo-400 shrink-0" />
+                                                                        <span className="truncate flex-1">{file.name}</span>
                                                                         <Download size={14} />
                                                                     </a>
-                                                                </div>
-                                                            ) : (
-                                                                <a
-                                                                    href={file.url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex items-center gap-2 text-xs text-indigo-300 hover:underline p-1"
-                                                                >
-                                                                    <FileText size={16} className="text-indigo-400 shrink-0" />
-                                                                    <span className="truncate flex-1">{file.name}</span>
-                                                                    <Download size={14} />
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
@@ -565,18 +738,61 @@ export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProp
                     <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                         <ImageKitUploader onUploadSuccess={handleUploadSuccess} compact={true} />
 
-                        <input
-                            type="text"
-                            value={inputContent}
-                            onChange={handleInputChange}
-                            placeholder={`Message ${selectedRecipient ? selectedRecipient.name : "#" + selectedRoom}...`}
-                            className="flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                        />
+                        {!isRecording && !isUploadingVoice && (
+                            <button
+                                type="button"
+                                onClick={startRecording}
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:text-white transition"
+                                title="Record Voice Message"
+                            >
+                                <Mic size={18} className="text-rose-400" />
+                            </button>
+                        )}
+
+                        {isRecording ? (
+                            <div className="flex-1 flex items-center justify-between bg-rose-950/20 border border-rose-500/30 rounded-xl px-4 py-2.5">
+                                <div className="flex items-center gap-2 text-rose-400 text-sm font-semibold animate-pulse">
+                                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                    Recording: {formatDuration(recordingDuration)}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={cancelRecording}
+                                        className="p-1 text-slate-400 hover:text-rose-400 transition"
+                                        title="Discard recording"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={stopRecording}
+                                        className="flex items-center justify-center h-7 w-7 rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition shadow-md shadow-rose-600/30"
+                                        title="Stop and attach"
+                                    >
+                                        <Square size={12} fill="white" />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : isUploadingVoice ? (
+                            <div className="flex-1 flex items-center justify-center bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-indigo-400 font-semibold gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Uploading voice message...
+                            </div>
+                        ) : (
+                            <input
+                                type="text"
+                                value={inputContent}
+                                onChange={handleInputChange}
+                                placeholder={`Message ${selectedRecipient ? selectedRecipient.name : "#" + selectedRoom}...`}
+                                className="flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                            />
+                        )}
 
                         <button
                             type="submit"
-                            disabled={!inputContent.trim() && attachments.length === 0}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-500 disabled:opacity-50"
+                            disabled={(!inputContent.trim() && attachments.length === 0) || isRecording || isUploadingVoice}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-500 disabled:opacity-50"
                         >
                             <Send size={18} />
                         </button>

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import connectDB from "@/lib/connectdb";
 import Message from "@/models/Message.model";
+import Notification from "@/models/Notification.model";
+import Manager from "@/models/menager.model";
+import Developer from "@/models/developer.model";
+import Tester from "@/models/tester.model";
+import User from "@/models/auth.model";
 
 export async function getMessages(request: NextRequest) {
     try {
@@ -75,6 +81,74 @@ export async function createMessage(request: NextRequest) {
             attachments: attachments || [],
             isRead: false,
         });
+
+        const notifLink = senderRole === "admin" ? "/admin/messages" : `/dashboard/${senderRole}/messages`;
+
+        // Save persistent notification record in database for direct messages
+        if (receiverId) {
+            try {
+                await Notification.create({
+                    recipientId: receiverId,
+                    senderId,
+                    senderName,
+                    type: "new_message",
+                    title: `New message from ${senderName}`,
+                    message: content ? content.trim() : (attachments && attachments.length > 0 ? "Sent an attachment" : "Sent a message"),
+                    link: notifLink,
+                    isRead: false,
+                });
+                console.log(`[Notification] Created message notification in database for user: ${receiverId}`);
+            } catch (err) {
+                console.error("Failed to create message notification in database:", err);
+            }
+        } else if (roomId && !roomId.startsWith("dm_")) {
+            // Channel message notifications for all other team members
+            try {
+                // Safeguard against CastError if senderId is a placeholder string (e.g. 'admin_default')
+                const queryCond = mongoose.Types.ObjectId.isValid(senderId) ? { _id: { $ne: senderId } } : {};
+
+                const [managers, developers, testers, admins] = await Promise.all([
+                    Manager.find(queryCond, "_id").lean(),
+                    Developer.find(queryCond, "_id").lean(),
+                    Tester.find(queryCond, "_id").lean(),
+                    User.find(queryCond, "_id").lean(),
+                ]);
+
+                const recipients = [
+                    ...managers.map((m) => m._id.toString()),
+                    ...developers.map((d) => d._id.toString()),
+                    ...testers.map((t) => t._id.toString()),
+                    ...admins.map((a) => a._id.toString()),
+                ];
+
+                const channelDisplayName =
+                    roomId === "general"
+                        ? "General Announcements"
+                        : roomId === "dev-tasks"
+                        ? "Dev Team Chat"
+                        : roomId === "qa-bugs"
+                        ? "QA Testing & Bugs"
+                        : roomId;
+
+                const notifPromises = recipients.map((recipId) => {
+                    return Notification.create({
+                        recipientId: recipId,
+                        senderId,
+                        senderName,
+                        type: "new_message",
+                        title: `New message in #${channelDisplayName}`,
+                        message: `${senderName}: ${content ? content.trim() : (attachments && attachments.length > 0 ? "Sent an attachment" : "Sent a message")}`,
+                        link: notifLink,
+                        isRead: false,
+                    });
+                });
+
+                await Promise.all(notifPromises);
+                console.log(`[Notification] Created channel notifications in database for ${recipients.length} users`);
+            } catch (err) {
+                console.error("Failed to create channel notifications in database:", err);
+            }
+        }
 
         return NextResponse.json(
             {

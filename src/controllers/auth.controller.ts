@@ -65,12 +65,12 @@ export const Register = async (req: NextRequest) => {
             OTPExpiry: OTP.time,
             isVerified: false,
         });
-        console.log(OTP.otp);
-        // await sendEmail(
-        //     user.email,
-        //     "Verify your email",
-        //     otpEmailTemplate(user.name, OTP.otp)
-        // );
+        console.log("Generated OTP:", OTP.otp);
+        await sendEmail(
+            user.email,
+            "Verify your email",
+            otpEmailTemplate(user.name, OTP.otp)
+        );
 
         return NextResponse.json(
             {
@@ -85,7 +85,7 @@ export const Register = async (req: NextRequest) => {
         return NextResponse.json(
             {
                 success: false,
-                message: "Something went wrong",
+                message: `Something went wrong: ${(error as any)?.message || error}`,
             },
             { status: 401 }
         );
@@ -304,11 +304,11 @@ export const resendOTP = async (req: Request) => {
         user.OTP = OTP.otp;
         user.OTPExpiry = OTP.time;
         await user.save();
-        // await sendEmail(
-        //     user.email,
-        //     "Verify your email",
-        //     otpEmailTemplate(user.name, OTP.otp)
-        // );
+        await sendEmail(
+            user.email,
+            "Verify your email",
+            otpEmailTemplate(user.name, OTP.otp)
+        );
         return NextResponse.json(
             {
                 success: true,
