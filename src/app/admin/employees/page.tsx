@@ -4,15 +4,10 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import apiClient from "@/lib/apiClient";
 import {
-    Shield,
     Users,
-    UserPlus,
     Activity,
-    Briefcase,
-    MessageSquare,
     Search,
     Loader2,
-    LogOut,
     Trash2,
     Eye,
     RefreshCw,
@@ -25,9 +20,8 @@ import {
     UserX,
     Building2,
     Layers,
-    Clock,
+    Shield,
 } from "lucide-react";
-import NotificationCenter from "@/components/NotificationCenter";
 import ConfirmModal from "@/components/ConfirmModal";
 
 interface BaseEmployee {
@@ -165,11 +159,19 @@ export default function AllEmployeesPage() {
         }
     };
 
-    const allEmployees: EmployeeWithRole[] = [
+    const rawAllEmployees: EmployeeWithRole[] = [
         ...managers.map((m) => ({ ...m, role: "manager" as const })),
         ...developers.map((d) => ({ ...d, role: "developer" as const })),
         ...testers.map((t) => ({ ...t, role: "tester" as const })),
-    ].sort(
+    ];
+
+    const allEmployees: EmployeeWithRole[] = Array.from(
+        new Map(
+            rawAllEmployees
+                .filter(Boolean)
+                .map((emp) => [emp._id || emp.employeeId || emp.email, emp])
+        ).values()
+    ).sort(
         (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
 
@@ -199,7 +201,7 @@ export default function AllEmployeesPage() {
     const inactiveCount = allEmployees.length - activeCount;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+        <div className="space-y-6 max-w-7xl mx-auto w-full">
             {/* Confirm Delete Modal */}
             <ConfirmModal
                 isOpen={!!deleteTarget}
@@ -214,57 +216,57 @@ export default function AllEmployeesPage() {
 
             {/* Employee Details Modal */}
             {selectedEmployee && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6 relative transform transition-all">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xl space-y-6 relative transform transition-all">
                         {/* Close button */}
                         <button
                             onClick={() => setSelectedEmployee(null)}
-                            className="absolute right-4 top-4 text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition"
+                            className="absolute right-4 top-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition"
                         >
                             <X size={20} />
                         </button>
 
-                        <div className="flex items-center gap-4 border-b border-slate-800 pb-5">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 font-bold text-xl border border-rose-500/20 shadow-lg shadow-rose-500/10">
+                        <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white font-bold text-xl shadow-md shadow-rose-500/25">
                                 {selectedEmployee.name?.charAt(0).toUpperCase() || "E"}
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-lg font-bold text-white">{selectedEmployee.name}</h3>
+                                    <h3 className="text-lg font-bold text-slate-900">{selectedEmployee.name}</h3>
                                     {selectedEmployee.isVerified && (
-                                        <BadgeCheck className="text-blue-400" size={18} />
+                                        <BadgeCheck className="text-blue-600" size={18} />
                                     )}
                                 </div>
-                                <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                                    <Mail size={12} className="text-slate-500" />
+                                <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                    <Mail size={12} className="text-slate-400" />
                                     {selectedEmployee.email}
                                 </p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Employee ID</span>
-                                <p className="text-sm font-semibold text-white font-mono">{selectedEmployee.employeeId}</p>
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Employee ID</span>
+                                <p className="text-sm font-bold text-slate-800 font-mono">{selectedEmployee.employeeId}</p>
                             </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assigned Role</span>
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Role</span>
                                 <div>
                                     <RoleBadge role={selectedEmployee.role} />
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Account Status</span>
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Status</span>
                                 <div>
                                     <StatusBadge isActive={selectedEmployee.isActive} />
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Joining Date</span>
-                                <p className="text-xs font-medium text-slate-300 flex items-center gap-1 mt-0.5">
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Joining Date</span>
+                                <p className="text-xs font-semibold text-slate-700 flex items-center gap-1 mt-0.5">
                                     <Calendar size={13} className="text-slate-400" />
                                     {selectedEmployee.createdAt
                                         ? new Date(selectedEmployee.createdAt).toLocaleDateString(undefined, {
@@ -278,15 +280,15 @@ export default function AllEmployeesPage() {
                         </div>
 
                         {(selectedEmployee.managerEmplyId || selectedEmployee.managerId) && (
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assigned Manager Reference</span>
-                                <p className="text-xs font-mono text-slate-300">
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-4 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Manager Reference</span>
+                                <p className="text-xs font-mono font-semibold text-slate-700">
                                     {selectedEmployee.managerEmplyId || selectedEmployee.managerId}
                                 </p>
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                             <button
                                 onClick={() => {
                                     const target = {
@@ -298,7 +300,7 @@ export default function AllEmployeesPage() {
                                     setSelectedEmployee(null);
                                     setDeleteTarget(target);
                                 }}
-                                className="flex items-center gap-2 rounded-xl bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 transition"
+                                className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
                             >
                                 <Trash2 size={15} />
                                 Delete Employee
@@ -306,7 +308,7 @@ export default function AllEmployeesPage() {
 
                             <button
                                 onClick={() => setSelectedEmployee(null)}
-                                className="rounded-xl border border-slate-800 bg-slate-800/80 px-5 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition"
+                                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
                             >
                                 Close Profile
                             </button>
@@ -314,145 +316,40 @@ export default function AllEmployeesPage() {
                     </div>
                 </div>
             )}
-
-            {/* Sidebar */}
-            <aside className="hidden lg:flex w-64 flex-col border-r border-slate-800 bg-slate-900 fixed inset-y-0 z-30">
-                <div className="flex h-20 items-center gap-3 border-b border-slate-800 px-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 text-white font-bold shadow-lg shadow-rose-600/30">
-                        <Shield size={22} />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-white text-base">AdminHub</h2>
-                        <p className="text-[11px] text-slate-400">System Admin Control</p>
-                    </div>
+            {/* Page Header / Action Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <Users className="text-rose-600" size={22} />
+                        Company Employees Directory
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        Manage roles, accounts, and directory access for all team members
+                    </p>
                 </div>
 
-                <nav className="flex-1 space-y-6 p-4 overflow-y-auto">
-                    <div>
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Overview</p>
-                        <Link
-                            href="/admin"
-                            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                        >
-                            <Activity size={16} />
-                            Dashboard Overview
-                        </Link>
-                    </div>
-
-                    <div>
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Employee Management</p>
-                        <div className="space-y-1">
-                            <Link
-                                href="/admin/employees"
-                                className="flex items-center gap-3 rounded-xl bg-rose-600 px-3.5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-600/30"
-                            >
-                                <Users size={16} />
-                                All Employees
-                            </Link>
-                            <Link
-                                href="/admin/createmanager"
-                                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                            >
-                                <UserPlus size={16} />
-                                Create Manager
-                            </Link>
-                            <Link
-                                href="/admin/createdeveloper"
-                                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                            >
-                                <UserPlus size={16} />
-                                Create Developer
-                            </Link>
-                            <Link
-                                href="/admin/createtester"
-                                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                            >
-                                <UserPlus size={16} />
-                                Create Tester
-                            </Link>
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Tasks & Logs</p>
-                        <div className="space-y-1">
-                            <Link
-                                href="/admin/tasks"
-                                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                            >
-                                <Briefcase size={16} />
-                                Global Tasks Overview
-                            </Link>
-                            <Link
-                                href="/admin/messages"
-                                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition"
-                            >
-                                <MessageSquare size={16} />
-                                Team Broadcasts
-                            </Link>
-                        </div>
-                    </div>
-                </nav>
-
-                <div className="border-t border-slate-800 p-4">
-                    <div className="flex items-center justify-between rounded-xl bg-slate-950/60 p-3 border border-slate-800">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-white font-bold text-xs shadow-md">
-                                AD
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-xs font-semibold text-white truncate">Administrator</p>
-                                <p className="text-[10px] text-slate-400 truncate">System Root</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            title="Sign Out"
-                            className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition"
-                        >
-                            <LogOut size={16} />
-                        </button>
-                    </div>
+                <div className="flex items-center gap-2.5">
+                    <button
+                        onClick={fetchEmployees}
+                        disabled={loading}
+                        title="Refresh Data"
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition shadow-xs disabled:opacity-50"
+                    >
+                        <RefreshCw size={14} className={loading ? "animate-spin text-rose-600" : ""} />
+                        <span>Refresh Data</span>
+                    </button>
                 </div>
-            </aside>
-
-            {/* Main Content Area */}
-            <div className="flex-1 lg:ml-64 min-w-0 flex flex-col">
-                {/* Header */}
-                <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-800 bg-slate-950/80 px-6 backdrop-blur-xl">
-                    <div>
-                        <p className="text-xs font-medium text-slate-400">Employee Directory</p>
-                        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Users className="text-rose-500" size={20} />
-                            All Company Employees
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={fetchEmployees}
-                            disabled={loading}
-                            title="Refresh Data"
-                            className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition disabled:opacity-50"
-                        >
-                            <RefreshCw size={14} className={loading ? "animate-spin text-rose-500" : ""} />
-                            <span className="hidden sm:inline">Refresh Directory</span>
-                        </button>
-                        <NotificationCenter currentUserId="admin_id" />
-                    </div>
-                </header>
-
-                <main className="p-6 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+            </div>
                     {/* Error Banner */}
                     {error && (
-                        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center justify-between text-rose-400 text-xs font-medium">
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 flex items-center justify-between text-rose-700 text-xs font-medium">
                             <div className="flex items-center gap-2">
                                 <X size={16} />
                                 <span>{error}</span>
                             </div>
                             <button
                                 onClick={fetchEmployees}
-                                className="underline hover:text-rose-300 font-semibold ml-4"
+                                className="underline hover:text-rose-900 font-semibold ml-4"
                             >
                                 Retry
                             </button>
@@ -464,7 +361,7 @@ export default function AllEmployeesPage() {
                         <StatCard
                             title="Total Employees"
                             count={allEmployees.length}
-                            icon={<Users className="text-rose-500" size={20} />}
+                            icon={<Users className="text-rose-600" size={20} />}
                             subtitle={`${activeCount} Active • ${inactiveCount} Inactive`}
                             active={activeTab === "all"}
                             onClick={() => setActiveTab("all")}
@@ -472,7 +369,7 @@ export default function AllEmployeesPage() {
                         <StatCard
                             title="Managers"
                             count={managers.length}
-                            icon={<Building2 className="text-purple-400" size={20} />}
+                            icon={<Building2 className="text-indigo-600" size={20} />}
                             subtitle="Executive & Project Leads"
                             active={activeTab === "manager"}
                             onClick={() => setActiveTab("manager")}
@@ -480,7 +377,7 @@ export default function AllEmployeesPage() {
                         <StatCard
                             title="Developers"
                             count={developers.length}
-                            icon={<Layers className="text-blue-400" size={20} />}
+                            icon={<Layers className="text-blue-600" size={20} />}
                             subtitle="Frontend, Backend & Systems"
                             active={activeTab === "developer"}
                             onClick={() => setActiveTab("developer")}
@@ -488,7 +385,7 @@ export default function AllEmployeesPage() {
                         <StatCard
                             title="Testers"
                             count={testers.length}
-                            icon={<Shield className="text-amber-400" size={20} />}
+                            icon={<Shield className="text-amber-600" size={20} />}
                             subtitle="QA & Automated Testing"
                             active={activeTab === "tester"}
                             onClick={() => setActiveTab("tester")}
@@ -496,7 +393,7 @@ export default function AllEmployeesPage() {
                     </div>
 
                     {/* Search & Filter Toolbar */}
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between rounded-2xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-xl">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
                         {/* Role Tabs */}
                         <div className="flex flex-wrap gap-2">
                             <TabButton
@@ -534,43 +431,43 @@ export default function AllEmployeesPage() {
                                     placeholder="Search by name, email, ID..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-800 bg-slate-950 pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:border-rose-500 focus:outline-none transition"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 focus:outline-none transition shadow-xs"
                                 />
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                     >
                                         <X size={13} />
                                     </button>
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-2 border border-slate-800 bg-slate-950 rounded-xl px-3 py-1.5 text-xs text-slate-400">
-                                <Filter size={13} className="text-slate-500" />
+                            <div className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs text-slate-600 shadow-xs">
+                                <Filter size={13} className="text-slate-400" />
                                 <select
                                     value={statusFilter}
                                     onChange={(e: any) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent text-xs text-white focus:outline-none cursor-pointer"
+                                    className="bg-transparent text-xs text-slate-800 font-medium focus:outline-none cursor-pointer"
                                 >
-                                    <option value="all" className="bg-slate-900 text-white">All Status</option>
-                                    <option value="active" className="bg-slate-900 text-white">Active Only</option>
-                                    <option value="inactive" className="bg-slate-900 text-white">Inactive Only</option>
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active Only</option>
+                                    <option value="inactive">Inactive Only</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
                     {/* Employee Directory Table */}
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-2xl">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 px-6 py-4 gap-2">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 px-6 py-4 gap-2 bg-slate-50/50">
                             <div>
-                                <h3 className="font-bold text-white text-sm">
+                                <h3 className="font-bold text-slate-900 text-sm">
                                     {activeTab === "all"
                                         ? "All Employees List"
                                         : `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} List`}
                                 </h3>
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-slate-500">
                                     Showing {filteredEmployees.length} of {allEmployees.length} total staff records
                                 </p>
                             </div>
@@ -579,19 +476,19 @@ export default function AllEmployeesPage() {
                             <div className="flex items-center gap-2">
                                 <Link
                                     href="/admin/createmanager"
-                                    className="rounded-lg border border-purple-500/20 bg-purple-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-purple-400 hover:bg-purple-500/20 transition"
+                                    className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-xs"
                                 >
                                     + Manager
                                 </Link>
                                 <Link
                                     href="/admin/createdeveloper"
-                                    className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 hover:bg-blue-500/20 transition"
+                                    className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition shadow-xs"
                                 >
                                     + Developer
                                 </Link>
                                 <Link
                                     href="/admin/createtester"
-                                    className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/20 transition"
+                                    className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition shadow-xs"
                                 >
                                     + Tester
                                 </Link>
@@ -599,16 +496,16 @@ export default function AllEmployeesPage() {
                         </div>
 
                         {loading ? (
-                            <div className="p-16 text-center text-slate-400 flex flex-col items-center justify-center space-y-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-                                <p className="text-xs font-medium">Fetching company staff records...</p>
+                            <div className="p-16 text-center text-slate-500 flex flex-col items-center justify-center space-y-3">
+                                <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+                                <p className="text-xs font-semibold">Fetching company staff records...</p>
                             </div>
                         ) : filteredEmployees.length === 0 ? (
                             <div className="p-16 text-center space-y-3">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-800/80 text-slate-500">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                                     <Users size={24} />
                                 </div>
-                                <h4 className="font-semibold text-white text-sm">No employees match criteria</h4>
+                                <h4 className="font-bold text-slate-900 text-sm">No employees match criteria</h4>
                                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                                     {searchQuery
                                         ? `No results found for "${searchQuery}". Try clearing search keywords.`
@@ -617,7 +514,7 @@ export default function AllEmployeesPage() {
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="mt-2 text-xs font-semibold text-rose-400 hover:underline"
+                                        className="mt-2 text-xs font-semibold text-rose-600 hover:underline"
                                     >
                                         Clear Search Query
                                     </button>
@@ -627,7 +524,7 @@ export default function AllEmployeesPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-800 bg-slate-950/60 uppercase tracking-wider text-[10px] font-bold text-slate-400">
+                                        <tr className="border-b border-slate-200 bg-slate-50/80 uppercase tracking-wider text-[10px] font-bold text-slate-500">
                                             <th className="px-6 py-4">Employee ID</th>
                                             <th className="px-6 py-4">Staff Member</th>
                                             <th className="px-6 py-4">Email</th>
@@ -637,28 +534,28 @@ export default function AllEmployeesPage() {
                                             <th className="px-6 py-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800/60">
+                                    <tbody className="divide-y divide-slate-100">
                                         {filteredEmployees.map((emp) => (
                                             <tr
                                                 key={`${emp.role}-${emp._id}`}
-                                                className="hover:bg-slate-800/40 transition group"
+                                                className="hover:bg-slate-50/80 transition group"
                                             >
-                                                <td className="px-6 py-4 font-mono font-semibold text-slate-300">
+                                                <td className="px-6 py-4 font-mono font-semibold text-slate-700">
                                                     {emp.employeeId || "N/A"}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 font-bold text-white border border-slate-700 text-xs">
+                                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-700 border border-slate-200 text-xs">
                                                             {emp.name?.charAt(0).toUpperCase() || "E"}
                                                         </div>
                                                         <div>
-                                                            <p className="font-semibold text-white group-hover:text-rose-400 transition">
+                                                            <p className="font-bold text-slate-900 group-hover:text-rose-600 transition">
                                                                 {emp.name}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-400">
+                                                <td className="px-6 py-4 text-slate-600 font-medium">
                                                     {emp.email}
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -667,7 +564,7 @@ export default function AllEmployeesPage() {
                                                 <td className="px-6 py-4">
                                                     <StatusBadge isActive={emp.isActive} />
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-400">
+                                                <td className="px-6 py-4 text-slate-500 font-medium">
                                                     {emp.createdAt
                                                         ? new Date(emp.createdAt).toLocaleDateString(undefined, {
                                                             year: "numeric",
@@ -681,7 +578,7 @@ export default function AllEmployeesPage() {
                                                         <button
                                                             onClick={() => setSelectedEmployee(emp)}
                                                             title="View Profile Details"
-                                                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700 hover:text-white transition"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 transition shadow-xs"
                                                         >
                                                             <Eye size={14} />
                                                         </button>
@@ -696,7 +593,7 @@ export default function AllEmployeesPage() {
                                                             }
                                                             disabled={deletingId === emp._id}
                                                             title="Delete Employee"
-                                                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition disabled:opacity-50"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white transition disabled:opacity-50 shadow-xs"
                                                         >
                                                             {deletingId === emp._id ? (
                                                                 <Loader2 size={14} className="animate-spin" />
@@ -713,8 +610,6 @@ export default function AllEmployeesPage() {
                             </div>
                         )}
                     </div>
-                </main>
-            </div>
         </div>
     );
 }
@@ -741,18 +636,18 @@ function StatCard({
     return (
         <button
             onClick={onClick}
-            className={`rounded-2xl border p-5 text-left transition backdrop-blur-xl ${
+            className={`rounded-2xl border p-5 text-left transition shadow-xs ${
                 active
-                    ? "border-rose-500/50 bg-slate-900 shadow-lg shadow-rose-500/10 ring-1 ring-rose-500/30"
-                    : "border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700"
+                    ? "border-rose-300 bg-rose-50/60 shadow-md ring-2 ring-rose-500/20"
+                    : "border-slate-200/80 bg-white hover:bg-slate-50/50 hover:border-slate-300"
             }`}
         >
             <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-400">{title}</span>
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">{icon}</div>
+                <span className="text-xs font-semibold text-slate-500">{title}</span>
+                <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 shadow-xs">{icon}</div>
             </div>
-            <p className="mt-3 text-3xl font-extrabold text-white tracking-tight">{count}</p>
-            <p className="mt-1 text-[11px] text-slate-500">{subtitle}</p>
+            <p className="mt-3 text-3xl font-black text-slate-900 tracking-tight">{count}</p>
+            <p className="mt-1 text-[11px] text-slate-400 font-medium">{subtitle}</p>
         </button>
     );
 }
@@ -771,16 +666,16 @@ function TabButton({
     return (
         <button
             onClick={onClick}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition shadow-xs ${
                 active
-                    ? "bg-rose-600 text-white shadow-lg shadow-rose-600/30"
-                    : "border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    ? "bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-md shadow-rose-500/25"
+                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
         >
             <span>{label}</span>
             <span
-                className={`rounded-full px-2 py-0.5 text-[10px] ${
-                    active ? "bg-rose-700 text-white" : "bg-slate-800 text-slate-400"
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    active ? "bg-rose-700 text-white" : "bg-slate-100 text-slate-600"
                 }`}
             >
                 {count}
@@ -792,13 +687,13 @@ function TabButton({
 function RoleBadge({ role }: { role: EmployeeRole }) {
     const styles =
         role === "manager"
-            ? "border-purple-500/30 bg-purple-500/10 text-purple-400"
+            ? "border-indigo-200/80 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500/10"
             : role === "developer"
-            ? "border-blue-500/30 bg-blue-500/10 text-blue-400"
-            : "border-amber-500/30 bg-amber-500/10 text-amber-400";
+            ? "border-blue-200/80 bg-blue-50 text-blue-700 ring-1 ring-blue-500/10"
+            : "border-amber-200/80 bg-amber-50 text-amber-800 ring-1 ring-amber-500/10";
 
     return (
-        <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${styles}`}>
+        <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${styles}`}>
             {role}
         </span>
     );
@@ -806,13 +701,13 @@ function RoleBadge({ role }: { role: EmployeeRole }) {
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
     return isActive ? (
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-500/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Active
         </span>
     ) : (
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200/80 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 ring-1 ring-rose-500/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
             Inactive
         </span>
     );

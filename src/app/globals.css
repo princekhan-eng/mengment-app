@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
@@ -16,36 +16,36 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: #020617;
-  color: #f8fafc;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
 }
 
-/* Modern Dark Custom Scrollbars */
+/* Modern Clean Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e293b #090d16;
+  scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
 /* Responsive Utilities & Touch targets */

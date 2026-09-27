@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState, Suspense } from "react";
+import { FormEvent, useEffect, useState, useMemo, Suspense } from "react";
 import axios from "axios";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -14,8 +14,9 @@ import {
     ShieldCheck,
     UserRound,
     Users,
+    AlertCircle,
 } from "lucide-react";
-import { useEmployeeById } from "@/hooks/useEmployees";
+import { useDevelopers, useTesters, useEmployeeById } from "@/hooks/useEmployees";
 import { useCreateTask } from "@/hooks/useTasks";
 
 interface Employee {
@@ -26,25 +27,16 @@ interface Employee {
     role?: string;
 }
 
-interface EmployeesResponse {
-    success: boolean;
-    developers?: Employee[];
-    testers?: Employee[];
-}
-
-interface CreateTaskResponse {
-    success: boolean;
-    message: string;
-    task?: any;
-}
-
 export function CreateTaskContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const employeeId = searchParams.get("employeeId");
+    const paramEmployeeId = searchParams.get("employeeId");
 
-    const { data: developer, isLoading: loadingEmployees, error: fetchError } = useEmployeeById(employeeId);
+    const { data: specificEmployee, isLoading: loadingSpecific } = useEmployeeById(paramEmployeeId);
+    const { data: rawDevelopers = [], isLoading: loadingDevs } = useDevelopers();
+    const { data: rawTesters = [], isLoading: loadingTesters } = useTesters();
+
     const createTaskMutation = useCreateTask();
 
     const [error, setError] = useState("");
@@ -54,42 +46,63 @@ export function CreateTaskContent() {
     const [description, setDescription] = useState("");
 
     const [assignedTo, setAssignedTo] = useState("");
-    const [assignedToRole, setAssignedToRole] =
-        useState<"developer" | "tester">("developer");
+    const [assignedToRole, setAssignedToRole] = useState<"developer" | "tester">("developer");
 
-    const [priority, setPriority] = useState<
-        "low" | "medium" | "high" | "urgent"
-    >("medium");
-
+    const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
     const [dueDate, setDueDate] = useState("");
 
-    useEffect(() => {
-        if (developer) {
-            setAssignedTo(developer._id);
-            setAssignedToRole("developer");
+    // Deduplicate lists
+    const developers = useMemo(() => {
+        const seen = new Set<string>();
+        const res: Employee[] = [];
+        for (const d of rawDevelopers) {
+            const key = d._id || d.employeeId;
+            if (key && !seen.has(key)) {
+                seen.add(key);
+                res.push(d as Employee);
+            }
         }
-    }, [developer]);
+        return res;
+    }, [rawDevelopers]);
 
-    const developers = developer ? [developer] : [];
-    const testers: Employee[] = [];
+    const testers = useMemo(() => {
+        const seen = new Set<string>();
+        const res: Employee[] = [];
+        for (const t of rawTesters) {
+            const key = t._id || t.employeeId;
+            if (key && !seen.has(key)) {
+                seen.add(key);
+                res.push(t as Employee);
+            }
+        }
+        return res;
+    }, [rawTesters]);
 
-    const employees =
-        assignedToRole === "developer"
-            ? developers
-            : testers;
+    useEffect(() => {
+        if (specificEmployee) {
+            setAssignedTo(specificEmployee._id);
+            if (specificEmployee.role === "tester") {
+                setAssignedToRole("tester");
+            } else {
+                setAssignedToRole("developer");
+            }
+        }
+    }, [specificEmployee]);
 
-    const handleRoleChange = (
-        role: "developer" | "tester"
-    ) => {
+    const employees = assignedToRole === "developer" ? developers : testers;
+    const loadingEmployees = loadingSpecific || loadingDevs || loadingTesters;
+
+    const handleRoleChange = (role: "developer" | "tester") => {
         setAssignedToRole(role);
         setAssignedTo("");
     };
 
-    const handleSubmit = async (
-        event: FormEvent<HTMLFormElement>
-    ) => {
-        event.preventDefault();
+    const selectedEmployee = useMemo(() => {
+        return employees.find((e) => e._id === assignedTo) || (specificEmployee?._id === assignedTo ? specificEmployee : null);
+    }, [employees, assignedTo, specificEmployee]);
 
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         setError("");
         setSuccess("");
 
@@ -98,136 +111,77 @@ export function CreateTaskContent() {
             return;
         }
 
-        if (!description.trim()) {
-            setError("Task description is required.");
-            return;
-        }
-
         if (!assignedTo) {
-            setError(
-                `Please select a ${assignedToRole}.`
-            );
+            setError(`Please select a ${assignedToRole} to assign this task to.`);
             return;
         }
 
         try {
-            const response = await createTaskMutation.mutateAsync({
+            await createTaskMutation.mutateAsync({
                 title: title.trim(),
                 description: description.trim(),
-                assignedTo,
                 assignedToRole,
+                assignedTo,
                 priority,
                 dueDate: dueDate || undefined,
             });
 
-            setSuccess(
-                response.message ||
-                "Task created successfully."
-            );
-
-            setTitle("");
-            setDescription("");
-            setAssignedTo("");
-            setPriority("medium");
-            setDueDate("");
-
+            setSuccess("Task created and assigned successfully!");
             setTimeout(() => {
-                router.push(
-                    "/dashboard/manager/tasks"
-                );
-            }, 1000);
+                router.push("/dashboard/manager/tasks");
+            }, 1200);
         } catch (err: any) {
-            console.error(
-                "Create task error:",
-                err
-            );
-
-            setError(
-                err?.response?.data?.message ||
-                err?.message ||
-                "Failed to create task"
-            );
+            console.error("Create task error:", err);
+            setError(err.response?.data?.message || err.message || "Failed to create task.");
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-            {/* Header */}
-            <header className="bg-slate-950/80 border-b border-slate-800 sticky top-0 z-20 backdrop-blur-xl">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="h-20 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => router.back()}
-                                className="p-2.5 rounded-xl border border-slate-800 text-slate-300 hover:bg-slate-900 hover:text-white transition"
-                                title="Go Back"
-                            >
-                                <ArrowLeft size={20} />
-                            </button>
-
-                            <div>
-                                <h1 className="text-lg sm:text-xl font-bold text-white">
-                                    Create New Task
-                                </h1>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    Assign sprint task to developer or QA tester
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full">
-                            <ShieldCheck size={16} className="text-indigo-400" />
-                            Manager Operations
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main */}
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        <div className="space-y-6 max-w-6xl mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Form */}
                     <div className="lg:col-span-2">
                         <form
                             onSubmit={handleSubmit}
-                            className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+                            className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden"
                         >
-                            <div className="p-5 sm:p-6 border-b border-slate-800 bg-slate-950/40">
+                            <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                                        <FileText size={20} className="text-blue-400" />
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                                        <FileText size={20} className="text-indigo-600" />
                                     </div>
 
                                     <div>
-                                        <h2 className="font-bold text-white text-base">
+                                        <h2 className="font-bold text-slate-900 text-sm">
                                             Task Specifications
                                         </h2>
-                                        <p className="text-xs text-slate-400">
+                                        <p className="text-xs text-slate-500">
                                             Provide task details, assignee, priority, and deadline.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-5 sm:p-6 space-y-6">
+                            <div className="p-5 sm:p-6 space-y-5">
                                 {/* Error */}
                                 {error && (
-                                    <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-400">
+                                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 flex items-center gap-2">
+                                        <AlertCircle size={16} />
                                         {error}
                                     </div>
                                 )}
 
                                 {/* Success */}
                                 {success && (
-                                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-400 flex items-center gap-2">
-                                        <CheckCircle2 size={18} />
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700 flex items-center gap-2">
+                                        <CheckCircle2 size={16} />
                                         {success}
                                     </div>
                                 )}
 
                                 {/* Title */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-300 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Task Title <span className="text-rose-500">*</span>
                                     </label>
                                     <input
@@ -235,54 +189,54 @@ export function CreateTaskContent() {
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         placeholder="e.g. Implement authentication API endpoints"
-                                        className="w-full h-12 px-4 rounded-xl border border-slate-800 bg-slate-950 outline-none text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                                        className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition shadow-xs"
                                     />
                                 </div>
 
                                 {/* Description */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-300 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Task Description
                                     </label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Describe technical scope, required verifications, or documentation link..."
-                                        rows={5}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 outline-none resize-none text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                                        placeholder="Describe technical scope, required verifications, or documentation links..."
+                                        rows={4}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none resize-none text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition shadow-xs"
                                     />
                                 </div>
 
                                 {/* Assign To */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-300 mb-3">
+                                    <label className="block text-xs font-semibold text-slate-700 mb-2">
                                         Assign Target Role <span className="text-rose-500">*</span>
                                     </label>
 
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
                                         <button
                                             type="button"
                                             onClick={() => handleRoleChange("developer")}
-                                            className={`p-4 rounded-xl border text-left transition ${
+                                            className={`p-3.5 rounded-xl border text-left transition shadow-xs ${
                                                 assignedToRole === "developer"
-                                                    ? "border-blue-500/50 bg-blue-950/40 text-white ring-1 ring-blue-500/30"
-                                                    : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                                                    ? "border-blue-300 bg-blue-50/70 text-blue-900 ring-2 ring-blue-500/20"
+                                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                             }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                                                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
                                                         assignedToRole === "developer"
-                                                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                                                            : "bg-slate-800 text-slate-400"
+                                                            ? "bg-blue-600 text-white shadow-xs"
+                                                            : "bg-slate-100 text-slate-600"
                                                     }`}
                                                 >
-                                                    <Code2 size={20} />
+                                                    <Code2 size={18} />
                                                 </div>
 
                                                 <div>
-                                                    <p className="font-semibold text-white text-xs">Developer</p>
-                                                    <p className="text-[11px] text-slate-400">{developers.length} available</p>
+                                                    <p className="font-semibold text-xs">Developer</p>
+                                                    <p className="text-[11px] text-slate-500">{developers.length} available</p>
                                                 </div>
                                             </div>
                                         </button>
@@ -290,26 +244,26 @@ export function CreateTaskContent() {
                                         <button
                                             type="button"
                                             onClick={() => handleRoleChange("tester")}
-                                            className={`p-4 rounded-xl border text-left transition ${
+                                            className={`p-3.5 rounded-xl border text-left transition shadow-xs ${
                                                 assignedToRole === "tester"
-                                                    ? "border-purple-500/50 bg-purple-950/40 text-white ring-1 ring-purple-500/30"
-                                                    : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                                                    ? "border-amber-300 bg-amber-50/70 text-amber-900 ring-2 ring-amber-500/20"
+                                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                             }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                                                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
                                                         assignedToRole === "tester"
-                                                            ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                                                            : "bg-slate-800 text-slate-400"
+                                                            ? "bg-amber-600 text-white shadow-xs"
+                                                            : "bg-slate-100 text-slate-600"
                                                     }`}
                                                 >
-                                                    <ShieldCheck size={20} />
+                                                    <ShieldCheck size={18} />
                                                 </div>
 
                                                 <div>
-                                                    <p className="font-semibold text-white text-xs">QA Tester</p>
-                                                    <p className="text-[11px] text-slate-400">{testers.length} available</p>
+                                                    <p className="font-semibold text-xs">QA Tester</p>
+                                                    <p className="text-[11px] text-slate-500">{testers.length} available</p>
                                                 </div>
                                             </div>
                                         </button>
@@ -321,13 +275,13 @@ export function CreateTaskContent() {
                                             value={assignedTo}
                                             onChange={(e) => setAssignedTo(e.target.value)}
                                             disabled={loadingEmployees || employees.length === 0}
-                                            className="appearance-none w-full h-12 pl-4 pr-10 rounded-xl border border-slate-800 bg-slate-950 outline-none text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="appearance-none w-full h-11 pl-3.5 pr-10 rounded-xl border border-slate-200 bg-slate-50/50 outline-none text-xs text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition"
                                         >
-                                            <option value="" className="bg-slate-900 text-slate-400">
+                                            <option value="" className="text-slate-400">
                                                 {loadingEmployees
-                                                    ? "Loading employees..."
+                                                    ? "Loading team members..."
                                                     : employees.length === 0
-                                                    ? `No ${assignedToRole}s assigned to your team`
+                                                    ? `No ${assignedToRole}s available in team`
                                                     : `Select ${assignedToRole} recipient`}
                                             </option>
 
@@ -335,25 +289,25 @@ export function CreateTaskContent() {
                                                 <option
                                                     key={employee._id}
                                                     value={employee._id}
-                                                    className="bg-slate-900 text-white"
+                                                    className="text-slate-900"
                                                 >
-                                                    {employee.name} — {employee.employeeId}
+                                                    {employee.name} — ({employee.employeeId})
                                                 </option>
                                             ))}
                                         </select>
 
                                         <ChevronDown
-                                            size={18}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+                                            size={16}
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Priority + Due Date */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {/* Priority */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Task Priority
                                         </label>
 
@@ -365,50 +319,50 @@ export function CreateTaskContent() {
                                                         e.target.value as "low" | "medium" | "high" | "urgent"
                                                     )
                                                 }
-                                                className="appearance-none w-full h-12 px-4 pr-10 rounded-xl border border-slate-800 bg-slate-950 outline-none text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                                className="appearance-none w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 bg-slate-50/50 outline-none text-xs text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs transition"
                                             >
-                                                <option value="low" className="bg-slate-900 text-white">Low</option>
-                                                <option value="medium" className="bg-slate-900 text-white">Medium</option>
-                                                <option value="high" className="bg-slate-900 text-white">High</option>
-                                                <option value="urgent" className="bg-slate-900 text-white">Urgent</option>
+                                                <option value="low">Low Priority</option>
+                                                <option value="medium">Medium Priority</option>
+                                                <option value="high">High Priority</option>
+                                                <option value="urgent">Urgent Priority</option>
                                             </select>
 
                                             <ChevronDown
-                                                size={18}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+                                                size={16}
+                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Due Date */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Due Deadline Date
                                         </label>
 
                                         <div className="relative">
                                             <CalendarDays
-                                                size={18}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                                size={16}
+                                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                             />
 
                                             <input
                                                 type="date"
                                                 value={dueDate}
                                                 onChange={(e) => setDueDate(e.target.value)}
-                                                className="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-800 bg-slate-950 outline-none text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none text-xs text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs transition"
                                             />
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Buttons */}
-                                <div className="pt-4 border-t border-slate-800/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                                <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5">
                                     <button
                                         type="button"
                                         onClick={() => router.back()}
                                         disabled={createTaskMutation.isPending}
-                                        className="h-11 px-6 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-semibold text-xs hover:bg-slate-800 hover:text-white transition disabled:opacity-50"
+                                        className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-xs hover:bg-slate-50 transition disabled:opacity-50 shadow-xs"
                                     >
                                         Cancel
                                     </button>
@@ -416,16 +370,16 @@ export function CreateTaskContent() {
                                     <button
                                         type="submit"
                                         disabled={createTaskMutation.isPending || loadingEmployees}
-                                        className="h-11 px-7 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition"
+                                        className="h-10 px-6 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs transition"
                                     >
                                         {createTaskMutation.isPending ? (
                                             <>
-                                                <Loader2 size={18} className="animate-spin" />
+                                                <Loader2 size={16} className="animate-spin" />
                                                 Creating Task...
                                             </>
                                         ) : (
                                             <>
-                                                <CheckCircle2 size={18} />
+                                                <CheckCircle2 size={16} />
                                                 Create & Assign Task
                                             </>
                                         )}
@@ -436,129 +390,90 @@ export function CreateTaskContent() {
                     </div>
 
                     {/* Right Side */}
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                         {/* Assignment Preview */}
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
                                     <Users size={18} />
                                 </div>
 
                                 <div>
-                                    <h3 className="font-bold text-white text-sm">
+                                    <h3 className="font-bold text-slate-900 text-sm">
                                         Assignee Target
                                     </h3>
                                     <p className="text-xs text-slate-400">
-                                        Selected team recipient
+                                        Selected recipient summary
                                     </p>
                                 </div>
                             </div>
 
-                            {assignedTo ? (
-                                (() => {
-                                    const employee = employees.find((item) => item._id === assignedTo);
-
-                                    return employee ? (
-                                        <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-300 font-bold flex items-center justify-center text-sm border border-indigo-500/30">
-                                                    {employee.name.charAt(0).toUpperCase()}
-                                                </div>
-
-                                                <div className="min-w-0">
-                                                    <p className="font-semibold text-white text-xs truncate">
-                                                        {employee.name}
-                                                    </p>
-                                                    <p className="text-[11px] text-slate-400 font-mono">
-                                                        ID: {employee.employeeId}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                                                <span className="text-slate-400">Assigned Role:</span>
-                                                <span className="font-semibold text-indigo-400 capitalize">
-                                                    {assignedToRole}
-                                                </span>
-                                            </div>
+                            {selectedEmployee ? (
+                                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/70">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm shadow-xs">
+                                            {selectedEmployee.name.charAt(0).toUpperCase()}
                                         </div>
-                                    ) : null;
-                                })()
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-xs">
+                                                {selectedEmployee.name}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 capitalize">
+                                                {selectedEmployee.employeeId} • {assignedToRole}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {selectedEmployee.email && (
+                                        <p className="text-xs text-slate-500 pt-1 border-t border-slate-200/60">
+                                            {selectedEmployee.email}
+                                        </p>
+                                    )}
+                                </div>
                             ) : (
-                                <div className="rounded-xl bg-slate-900/60 border border-slate-800 p-6 text-center">
-                                    <UserRound size={28} className="mx-auto text-slate-600" />
-                                    <p className="text-xs text-slate-400 mt-2">
-                                        No employee selected yet
-                                    </p>
+                                <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
+                                    No employee selected yet.
                                 </div>
                             )}
                         </div>
 
-                        {/* Task Preview Card */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-inner text-white">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300">
-                                    <FileText size={18} />
+                        {/* Priority Guide */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-3">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                                Priority Level Guide
+                            </h4>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                    <span><strong>Low:</strong> Routine improvements or low urgency items</span>
                                 </div>
-
-                                <div>
-                                    <h3 className="font-bold text-sm">
-                                        Live Task Preview
-                                    </h3>
-                                    <p className="text-xs text-slate-400">
-                                        Card appearance on member dashboard
-                                    </p>
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                    <span><strong>Medium:</strong> Standard sprint commitments</span>
                                 </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs bg-slate-900 p-4 rounded-xl border border-slate-800">
-                                <div>
-                                    <p className="text-[10px] text-slate-500 font-semibold uppercase">Title</p>
-                                    <p className="font-semibold text-white mt-0.5">
-                                        {title || "Untitled Sprint Task"}
-                                    </p>
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-2 h-2 rounded-full bg-orange-500" />
+                                    <span><strong>High:</strong> Priority features or critical client requests</span>
                                 </div>
-
-                                <div className="flex items-center justify-between border-t border-slate-800/80 pt-2.5">
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 font-semibold uppercase">Priority</p>
-                                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-bold uppercase text-slate-300">
-                                            {priority}
-                                        </span>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 font-semibold uppercase">Status</p>
-                                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold uppercase">
-                                            Pending
-                                        </span>
-                                    </div>
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                    <span><strong>Urgent:</strong> Blocker bugs or immediate releases</span>
                                 </div>
-
-                                {dueDate && (
-                                    <div className="border-t border-slate-800/80 pt-2.5">
-                                        <p className="text-[10px] text-slate-500 font-semibold uppercase">Due Deadline</p>
-                                        <p className="mt-0.5 text-slate-300 font-medium">
-                                            {new Date(dueDate).toLocaleDateString(undefined, {
-                                                year: "numeric",
-                                                month: "short",
-                                                day: "numeric",
-                                            })}
-                                        </p>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
         </div>
     );
 }
 
 export default function CreateTaskPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm">
+                Loading task creator...
+            </div>
+        }>
             <CreateTaskContent />
         </Suspense>
     );

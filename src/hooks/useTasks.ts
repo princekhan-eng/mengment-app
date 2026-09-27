@@ -43,16 +43,26 @@ export interface CreateTaskPayload {
     dueDate?: string;
 }
 
+// Helper to deduplicate tasks by unique ID
+function deduplicateTasks(tasks: Task[]): Task[] {
+    if (!Array.isArray(tasks)) return [];
+    return Array.from(
+        new Map(
+            tasks
+                .filter(Boolean)
+                .map((t) => [t._id || t.taskId || `${t.title}-${t.createdAt}`, t])
+        ).values()
+    );
+}
+
 // Query for Manager / Admin all tasks
 export function useAllTasks() {
     return useQuery<Task[]>({
         queryKey: ["tasks", "all"],
         queryFn: async () => {
             const res = await axios.get("/API/admin/getalltask");
-            if (res.data && res.data.success) {
-                return res.data.tasks || [];
-            }
-            return res.data?.tasks || [];
+            const rawTasks = (res.data && res.data.success ? res.data.tasks : res.data?.tasks) || [];
+            return deduplicateTasks(rawTasks);
         },
     });
 }
@@ -63,10 +73,8 @@ export function useDeveloperTasks() {
         queryKey: ["tasks", "developer"],
         queryFn: async () => {
             const res = await axios.get("/API/developer/gettask");
-            if (res.data && res.data.success) {
-                return res.data.tasks || [];
-            }
-            return [];
+            const rawTasks = (res.data && res.data.success ? res.data.tasks : []) || [];
+            return deduplicateTasks(rawTasks);
         },
     });
 }
@@ -77,10 +85,8 @@ export function useTesterTasks() {
         queryKey: ["tasks", "tester"],
         queryFn: async () => {
             const res = await axios.get("/API/tester/gettask");
-            if (res.data && res.data.success) {
-                return res.data.tasks || [];
-            }
-            return [];
+            const rawTasks = (res.data && res.data.success ? res.data.tasks : []) || [];
+            return deduplicateTasks(rawTasks);
         },
     });
 }

@@ -16,7 +16,10 @@ export function useDevelopers() {
         queryFn: async () => {
             const res = await axios.get("/API/manager/getdevloper");
             if (res.data && res.data.developers) {
-                return res.data.developers.flat();
+                const list: any[] = Array.isArray(res.data.developers) ? res.data.developers.flat() : [];
+                return Array.from(
+                    new Map(list.filter(Boolean).map((d: any) => [d._id || d.employeeId || d.email, d])).values()
+                );
             }
             return [];
         },
@@ -29,7 +32,10 @@ export function useTesters() {
         queryFn: async () => {
             const res = await axios.get("/API/getemply/tester");
             if (res.data && res.data.testers) {
-                return res.data.testers;
+                const list: any[] = Array.isArray(res.data.testers) ? res.data.testers.flat() : [];
+                return Array.from(
+                    new Map(list.filter(Boolean).map((t: any) => [t._id || t.employeeId || t.email, t])).values()
+                );
             }
             return [];
         },

@@ -10,11 +10,12 @@ import {
     Briefcase,
     ArrowRight,
     ShieldCheck,
+    CheckCircle2,
     Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
-;
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -38,12 +39,18 @@ export default function RegisterPage() {
             ...formData,
             [e.target.name]: e.target.value,
         });
+        if (error) setError("");
     };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
         setError("");
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -61,169 +68,111 @@ export default function RegisterPage() {
                 throw new Error(response.data.message || "Registration failed");
             }
 
-            console.log("Registration successful:", response.data);
-            router.push(`/auth/verfiy?email=${encodeURIComponent(
-                formData.email
-            )}`);
-
+            router.push(`/auth/verfiy?email=${encodeURIComponent(formData.email)}`);
         } catch (error) {
-            setError(
-                error instanceof Error
-                    ? error.message
-                    : "Something went wrong"
-            );
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || "Registration failed.");
+            } else if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError("Something went wrong");
+            }
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <main className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
-            <div className="w-full max-w-5xl grid lg:grid-cols-2 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl">
-
-                {/* LEFT SIDE */}
-                <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-indigo-600 via-purple-400 to-slate-900 p-10 text-white">
-
+        <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+            <div className="w-full max-w-5xl grid lg:grid-cols-2 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl">
+                {/* LEFT BRAND BANNER */}
+                <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-10 text-white">
                     <div>
                         <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                                <Briefcase size={23} />
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-xs shadow-xs">
+                                <Briefcase size={22} className="text-white" />
                             </div>
 
                             <div>
-                                <h1 className="text-xl font-bold">
-                                    ManageHub
-                                </h1>
-                                <p className="text-xs text-white/70">
-                                    Team Management System
-                                </p>
+                                <h1 className="text-xl font-bold tracking-tight">ManageHub</h1>
+                                <p className="text-xs text-indigo-100">Team Management Platform</p>
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <h2 className="text-4xl font-bold leading-tight">
-                            Build better teams.
-                            <br />
-                            Manage smarter.
-                        </h2>
-
-                        <p className="mt-5 max-w-md text-white/75 leading-7">
-                            Create your account and join your organization.
-                            Manage projects, tasks, teams and workflows from
-                            one powerful platform.
-                        </p>
-
-                        <div className="mt-8 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
-                                    <ShieldCheck size={17} />
-                                </div>
-                                <span className="text-sm">
-                                    Secure authentication
-                                </span>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
-                                    <ShieldCheck size={17} />
-                                </div>
-                                <span className="text-sm">
-                                    Role-based access
-                                </span>
-                            </div>
-
-
-                            <div className="my-7 flex items-center gap-4">
-                                <div className="h-px flex-1 bg-slate-800" />
-
-                                <span className="text-xs text-slate-600">
-                                    OR
-                                </span>
-
-                                <div className="h-px flex-1 bg-slate-800" />
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    router.push(
-                                        "/jointeam"
-                                    )
-                                }
-                                className="group flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950 py-3.5 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-400"
-                            >
-                                <Users
-                                    size={18}
-                                />
-
-                                Join Team
-
-                                <ArrowRight
-                                    size={17}
-                                    className="transition-transform group-hover:translate-x-1"
-                                />
-                            </button>
-
-                            <p className="mt-3 text-center text-xs text-slate-600">
-                                Have an employee ID?
-                                Join your company
-                                team.
+                    <div className="space-y-6">
+                        <div className="space-y-3">
+                            <h2 className="text-3xl font-extrabold leading-tight">
+                                Build better teams.
+                                <br />
+                                Manage faster.
+                            </h2>
+                            <p className="text-xs text-indigo-100/90 leading-relaxed max-w-sm">
+                                Create your organization workspace. Manage projects, assign tasks to developers and QA testers, and monitor progress in real-time.
                             </p>
                         </div>
 
-                        {/* SECURITY */}
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-3 text-xs text-indigo-50">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Complete sprint lifecycle and task workflows</span>
+                            </div>
 
-                        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600">
-                            <ShieldCheck size={14} />
+                            <div className="flex items-center gap-3 text-xs text-indigo-50">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Direct role-based security & permissions</span>
+                            </div>
 
-                            Your account is protected
-                            with secure authentication.
+                            <div className="flex items-center gap-3 text-xs text-indigo-50">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Real-time team chat with ImageKit file attachments</span>
+                            </div>
                         </div>
                     </div>
 
-                    <p className="text-xs text-white/50">
-                        © 2026 ManageHub. All rights reserved.
-                    </p>
+                    <div className="pt-4 border-t border-white/15 flex items-center justify-between text-[11px] text-indigo-200">
+                        <span>Protected by AES session encryption</span>
+                        <span>© 2026 ManageHub</span>
+                    </div>
                 </div>
 
-                {/* RIGHT SIDE */}
-                <div className="p-6 sm:p-10">
-
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-white">
+                {/* RIGHT SIDE FORM */}
+                <div className="p-7 sm:p-10 flex flex-col justify-center">
+                    <div className="mb-6">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                             Create account
                         </h2>
-
-                        <p className="mt-2 text-sm text-slate-400">
-                            Create your management workspace account.
+                        <p className="mt-1 text-xs text-slate-500">
+                            Set up your company administration credentials
                         </p>
                     </div>
 
                     {error && (
-                        <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                        <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
                             {error}
                         </div>
                     )}
 
-                    <form
-                        onSubmit={handleSubmit}
-                        className="space-y-5"
-                    >
-
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {/* NAME */}
                         <div>
                             <label
                                 htmlFor="name"
-                                className="mb-2 block text-sm font-medium text-slate-300"
+                                className="mb-1.5 block text-xs font-semibold text-slate-700"
                             >
                                 Full name
                             </label>
 
                             <div className="relative">
                                 <User
-                                    size={18}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                    size={16}
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
 
                                 <input
@@ -234,7 +183,7 @@ export default function RegisterPage() {
                                     onChange={handleChange}
                                     placeholder="Enter your full name"
                                     required
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
                                 />
                             </div>
                         </div>
@@ -243,15 +192,15 @@ export default function RegisterPage() {
                         <div>
                             <label
                                 htmlFor="email"
-                                className="mb-2 block text-sm font-medium text-slate-300"
+                                className="mb-1.5 block text-xs font-semibold text-slate-700"
                             >
-                                Email address
+                                Work email address
                             </label>
 
                             <div className="relative">
                                 <Mail
-                                    size={18}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                    size={16}
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
 
                                 <input
@@ -262,7 +211,7 @@ export default function RegisterPage() {
                                     onChange={handleChange}
                                     placeholder="you@company.com"
                                     required
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
                                 />
                             </div>
                         </div>
@@ -271,132 +220,101 @@ export default function RegisterPage() {
                         <div>
                             <label
                                 htmlFor="password"
-                                className="mb-2 block text-sm font-medium text-slate-300"
+                                className="mb-1.5 block text-xs font-semibold text-slate-700"
                             >
                                 Password
                             </label>
 
                             <div className="relative">
                                 <Lock
-                                    size={18}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                    size={16}
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
 
                                 <input
                                     id="password"
                                     name="password"
-                                    type={
-                                        showPassword
-                                            ? "text"
-                                            : "password"
-                                    }
+                                    type={showPassword ? "text" : "password"}
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Create a strong password"
+                                    placeholder="Create password (min. 8 characters)"
                                     required
                                     minLength={8}
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-11 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
                                 />
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setShowPassword(!showPassword)
-                                    }
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                 >
-                                    {showPassword ? (
-                                        <EyeOff size={18} />
-                                    ) : (
-                                        <Eye size={18} />
-                                    )}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-
-                            <p className="mt-2 text-xs text-slate-500">
-                                Use at least 8 characters.
-                            </p>
                         </div>
+
                         {/* CONFIRM PASSWORD */}
                         <div>
                             <label
                                 htmlFor="confirmPassword"
-                                className="mb-2 block text-sm font-medium text-slate-300"
+                                className="mb-1.5 block text-xs font-semibold text-slate-700"
                             >
-                                Password
+                                Confirm password
                             </label>
 
                             <div className="relative">
                                 <Lock
-                                    size={18}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                    size={16}
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
 
                                 <input
                                     id="confirmPassword"
                                     name="confirmPassword"
-                                    type={
-                                        showConfirmPassword
-                                            ? "text"
-                                            : "password"
-                                    }
+                                    type={showConfirmPassword ? "text" : "password"}
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
-                                    placeholder="Create a strong password"
+                                    placeholder="Re-enter your password"
                                     required
                                     minLength={8}
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-11 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
                                 />
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setShowConfirmPassword(!showConfirmPassword)
-                                    }
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                 >
-                                    {showConfirmPassword ? (
-                                        <EyeOff size={18} />
-                                    ) : (
-                                        <Eye size={18} />
-                                    )}
+                                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-
-                            <p className="mt-2 text-xs text-slate-500">
-                                Confirm your password.
-                            </p>
                         </div>
 
                         {/* SUBMIT */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 mt-2"
                         >
                             {loading ? (
                                 "Creating account..."
                             ) : (
                                 <>
-                                    Create account
-
-                                    <ArrowRight
-                                        size={18}
-                                        className="transition-transform group-hover:translate-x-1"
-                                    />
+                                    Create Organization Workspace
+                                    <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <p className="mt-7 text-center text-sm text-slate-500">
+                    <p className="mt-6 text-center text-xs text-slate-500">
                         Already have an account?{" "}
-                        <a
+                        <Link
                             href="/auth/login"
-                            className="font-medium text-indigo-400 hover:text-indigo-300"
+                            className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
                         >
                             Sign in
-                        </a>
+                        </Link>
                     </p>
                 </div>
             </div>

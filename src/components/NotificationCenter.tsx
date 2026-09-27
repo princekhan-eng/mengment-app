@@ -156,24 +156,24 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 shadow-xs"
                 title="Notifications"
             >
                 <Bell size={19} />
                 {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white shadow-md animate-pulse">
+                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[10px] font-bold text-white shadow-md animate-pulse">
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute -right-2 sm:right-0 mt-3 w-[calc(100vw-32px)] max-w-sm sm:w-96 rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl z-50 overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 bg-slate-950/60">
+                <div className="absolute -right-2 sm:right-0 mt-3 w-[calc(100vw-32px)] max-w-sm sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/80">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-white text-sm">Notifications</h3>
+                            <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
                             {unreadCount > 0 && (
-                                <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-semibold text-indigo-300">
+                                <span className="rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 px-2 py-0.5 text-xs font-bold">
                                     {unreadCount} new
                                 </span>
                             )}
@@ -182,7 +182,7 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
                             {unreadCount > 0 && (
                                 <button
                                     onClick={() => handleMarkAllRead()}
-                                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition font-medium"
+                                    className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition font-semibold"
                                 >
                                     <CheckCheck size={14} />
                                     Mark all
@@ -191,7 +191,7 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
                             {notifications.length > 0 && (
                                 <button
                                     onClick={() => clearAllNotifications()}
-                                    className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 transition font-medium"
+                                    className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 transition font-semibold"
                                     title="Clear All Notifications"
                                 >
                                     <Trash2 size={13} />
@@ -201,9 +201,9 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
                         </div>
                     </div>
 
-                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                         {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-sm text-slate-500">
+                            <div className="p-8 text-center text-sm text-slate-400 font-medium">
                                 No notifications yet
                             </div>
                         ) : (
@@ -211,33 +211,33 @@ export default function NotificationCenter({ currentUserId }: NotificationCenter
                                 <div
                                     key={notif._id || index}
                                     onClick={() => handleMarkAsRead(notif._id)}
-                                    className={`group flex items-start gap-3 p-4 transition cursor-pointer hover:bg-slate-800/50 ${
-                                        !notif.isRead ? "bg-indigo-950/20" : ""
+                                    className={`group flex items-start gap-3 p-4 transition cursor-pointer hover:bg-slate-50/90 ${
+                                        !notif.isRead ? "bg-indigo-50/40" : ""
                                     }`}
                                 >
-                                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+                                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 border border-slate-200">
                                         {getIcon(notif.type)}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-xs font-semibold text-slate-200 truncate">
+                                            <p className="text-xs font-bold text-slate-900 truncate">
                                                 {notif.title}
                                             </p>
-                                            <span className="text-[10px] text-slate-500 shrink-0">
+                                            <span className="text-[10px] text-slate-400 shrink-0 font-medium">
                                                 {new Date(notif.createdAt).toLocaleTimeString([], {
                                                     hour: "2-digit",
                                                     minute: "2-digit",
                                                 })}
                                             </span>
                                         </div>
-                                        <p className="mt-1 text-xs text-slate-400 leading-relaxed line-clamp-2">
+                                        <p className="mt-1 text-xs text-slate-600 leading-relaxed line-clamp-2">
                                             {notif.message}
                                         </p>
                                     </div>
 
                                     <button
                                         onClick={(e) => handleDeleteNotification(e, notif._id)}
-                                        className="opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-rose-500/20 text-slate-500 hover:text-rose-400"
+                                        className="opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600"
                                         title="Delete notification"
                                     >
                                         <Trash2 size={13} />

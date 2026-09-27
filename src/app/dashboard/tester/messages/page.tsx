@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 import Link from "next/link";
 import TeamChat, { ChatUser } from "@/components/TeamChat";
-import NotificationCenter from "@/components/NotificationCenter";
 import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
 
 export default function TesterMessagesPage() {
@@ -36,8 +35,18 @@ export default function TesterMessagesPage() {
                     });
                 }
 
-                if (teamRes?.data?.success) {
-                    setTeamMembers(teamRes.data.members || []);
+                if (teamRes?.data?.success && Array.isArray(teamRes.data.members)) {
+                    // Deduplicate
+                    const seen = new Set<string>();
+                    const deduped: ChatUser[] = [];
+                    for (const m of teamRes.data.members) {
+                        const key = m.id || m._id || m.employeeId;
+                        if (key && !seen.has(key)) {
+                            seen.add(key);
+                            deduped.push(m);
+                        }
+                    }
+                    setTeamMembers(deduped);
                 }
             } catch (err) {
                 console.error("Failed to load tester messaging data:", err);
@@ -56,42 +65,37 @@ export default function TesterMessagesPage() {
 
     if (loading || !currentUser) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500 mb-3" />
-                <p className="text-sm text-slate-400">Loading QA Tester Communication Panel...</p>
+            <div className="h-64 flex flex-col items-center justify-center text-slate-700">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-600 mb-3" />
+                <p className="text-sm font-semibold">Loading QA Tester Workspace...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto space-y-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/dashboard/tester"
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                        >
-                            <ArrowLeft size={18} />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold flex items-center gap-2">
-                                <MessageSquare className="text-amber-400" size={22} />
-                                QA Testing Communication
-                            </h1>
-                            <p className="text-xs text-slate-400">
-                                Share bug logs, screenshots, and test results with managers and developers.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <NotificationCenter currentUserId={currentUser.id} />
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200/80">
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/tester"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-amber-600 shadow-xs"
+                        title="Back to Tester Portal"
+                    >
+                        <ArrowLeft size={18} />
+                    </Link>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <MessageSquare className="text-amber-600" size={22} />
+                            QA Testing Communication
+                        </h1>
+                        <p className="text-xs text-slate-500">
+                            Share bug logs, screenshots, and test results with managers and developers.
+                        </p>
                     </div>
                 </div>
-
-                <TeamChat currentUser={currentUser} teamMembers={teamMembers} />
             </div>
+
+            <TeamChat currentUser={currentUser} teamMembers={teamMembers} />
         </div>
     );
 }

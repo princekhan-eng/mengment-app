@@ -9,6 +9,7 @@ import {
     RefreshCw,
 } from "lucide-react";
 import axios from "axios";
+import Link from "next/link";
 
 function VerifyOTPContent() {
     const searchParams = useSearchParams();
@@ -23,9 +24,7 @@ function VerifyOTPContent() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
-    const handleSubmit = async (
-        e: FormEvent<HTMLFormElement>
-    ) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         setError("");
@@ -36,8 +35,8 @@ function VerifyOTPContent() {
             return;
         }
 
-        if (otp.length !== 4) {
-            setError("Please enter a valid 6-digit OTP.");
+        if (otp.length < 4) {
+            setError("Please enter your verification code.");
             return;
         }
 
@@ -58,26 +57,23 @@ function VerifyOTPContent() {
             );
 
             if (!response.data.success) {
-                throw new Error(
-                    response.data.message || "Invalid OTP."
-                );
+                throw new Error(response.data.message || "Invalid OTP.");
             }
 
-            setMessage(
-                response.data.message
-            );
+            setMessage(response.data.message || "Verification successful!");
 
             // Redirect to login
             setTimeout(() => {
                 router.push("/auth/login");
             }, 1000);
-
         } catch (error) {
-            setError(
-                error instanceof Error
-                    ? error.message
-                    : "Something went wrong."
-            );
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || "Invalid verification code.");
+            } else if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError("Something went wrong.");
+            }
         } finally {
             setLoading(false);
         }
@@ -95,106 +91,72 @@ function VerifyOTPContent() {
         setResending(true);
 
         try {
-            const response = await fetch(
-                "/API/auth/resendotp",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        email,
-                    }),
-                }
-            );
+            const response = await fetch("/API/auth/resendotp", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email }),
+            });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(
-                    data.message || "Failed to resend OTP."
-                );
+                throw new Error(data.message || "Failed to resend OTP.");
             }
 
-
-
-            setMessage(
-                "A new OTP has been sent to your email."
-            );
-
+            setMessage("A new verification code has been sent to your email.");
         } catch (error) {
-            setError(
-                error instanceof Error
-                    ? error.message
-                    : "Unable to resend OTP."
-            );
+            setError(error instanceof Error ? error.message : "Unable to resend code.");
         } finally {
             setResending(false);
         }
     };
 
     return (
-        <main className="min-h-screen bg-slate-950 text-white">
-
-
-
-            {/* CONTENT */}
-            <section className="flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-10">
-
+        <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center px-4 py-12">
+            <section className="flex items-center justify-center">
                 <div className="w-full max-w-md">
-
-                    {/* HEADER */}
-                    <div className="mb-8 text-center">
-
-                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
-                            <Mail size={30} />
+                    <div className="mb-6 flex justify-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-xs">
+                            <Mail size={28} />
                         </div>
+                    </div>
 
-                        <h2 className="text-3xl font-bold">
+                    <div className="mb-8 text-center">
+                        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                             Verify your email
                         </h2>
 
-                        <p className="mt-3 text-sm leading-6 text-slate-400">
-                            We've sent a 6-digit verification code
-                            to
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            We've sent a verification code to
                         </p>
 
-                        <p className="mt-1 break-all text-sm font-medium text-indigo-400">
-                            {email || "your email"}
+                        <p className="mt-1 break-all text-xs font-semibold text-indigo-600">
+                            {email || "your email address"}
                         </p>
-
                     </div>
 
-                    {/* CARD */}
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
-
-                        {/* ERROR */}
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl sm:p-9">
                         {error && (
-                            <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                            <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
                                 {error}
                             </div>
                         )}
 
-                        {/* SUCCESS */}
                         {message && (
-                            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+                            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
                                 {message}
                             </div>
                         )}
 
-                        <form
-                            onSubmit={handleSubmit}
-                            className="space-y-6"
-                        >
-
-                            {/* OTP */}
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-
                                 <label
                                     htmlFor="otp"
-                                    className="mb-2 block text-sm font-medium text-slate-300"
+                                    className="mb-1.5 block text-xs font-semibold text-slate-700"
                                 >
-                                    Verification code
+                                    Verification Code
                                 </label>
 
                                 <input
@@ -203,107 +165,73 @@ function VerifyOTPContent() {
                                     type="text"
                                     inputMode="numeric"
                                     autoComplete="one-time-code"
-                                    maxLength={4}
+                                    maxLength={6}
                                     value={otp}
                                     onChange={(e) => {
-                                        const value =
-                                            e.target.value.replace(
-                                                /\D/g,
-                                                ""
-                                            );
-
+                                        const value = e.target.value.replace(/\D/g, "");
                                         setOtp(value);
+                                        setError("");
                                     }}
-                                    placeholder="0000"
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-white outline-none transition placeholder:text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    placeholder="000000"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-center text-2xl font-bold tracking-[0.4em] text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
                                 />
 
-                                <p className="mt-2 text-xs text-slate-500">
-                                    Enter the 4-digit code from your email.
+                                <p className="mt-2 text-center text-[11px] text-slate-400">
+                                    Check your inbox or spam folder.
                                 </p>
-
                             </div>
 
-                            {/* VERIFY */}
                             <button
                                 type="submit"
-                                disabled={
-                                    loading ||
-                                    otp.length !== 4
-                                }
-                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={loading || otp.length < 4}
+                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-
                                 {loading ? (
-                                    "Verifying..."
+                                    "Verifying code..."
                                 ) : (
                                     <>
-                                        Verify email
-
-                                        <ArrowRight
-                                            size={18}
-                                            className="transition-transform group-hover:translate-x-1"
-                                        />
+                                        Confirm & Complete Setup
+                                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                                     </>
                                 )}
-
                             </button>
-
                         </form>
 
-                        {/* RESEND */}
-                        <div className="mt-7 border-t border-slate-800 pt-6 text-center">
-
-                            <p className="mb-3 text-sm text-slate-500">
-                                Didn't receive the code?
-                            </p>
-
+                        <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="text-slate-500">Didn't receive code?</span>
                             <button
                                 type="button"
                                 onClick={handleResendOTP}
                                 disabled={resending}
-                                className="inline-flex items-center gap-2 text-sm font-medium text-indigo-400 transition hover:text-indigo-300 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700 transition disabled:opacity-50"
                             >
-
-                                <RefreshCw
-                                    size={16}
-                                    className={
-                                        resending
-                                            ? "animate-spin"
-                                            : ""
-                                    }
-                                />
-
-                                {resending
-                                    ? "Sending..."
-                                    : "Resend OTP"}
-
+                                <RefreshCw size={13} className={resending ? "animate-spin" : ""} />
+                                Resend Code
                             </button>
-
                         </div>
-
                     </div>
 
-                    {/* SECURITY */}
-                    <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600">
-
-                        <ShieldCheck size={14} />
-
-                        Never share your verification code with anyone.
-
+                    <div className="mt-6 text-center">
+                        <Link
+                            href="/auth/login"
+                            className="text-xs text-slate-500 hover:text-indigo-600 hover:underline"
+                        >
+                            Back to sign in
+                        </Link>
                     </div>
-
                 </div>
-
             </section>
-
         </main>
     );
 }
 
 export default function VerifyOTPPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm">
+                Loading verification...
+            </div>
+        }>
             <VerifyOTPContent />
         </Suspense>
     );

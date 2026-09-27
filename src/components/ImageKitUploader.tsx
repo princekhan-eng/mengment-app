@@ -85,19 +85,19 @@ export default function ImageKitUploader({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 disabled:opacity-50"
                     title="Upload Image or File via ImageKit"
                 >
                     {uploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                        <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
                     ) : (
-                        <Paperclip className="h-4 w-4 text-indigo-400" />
+                        <Paperclip className="h-4 w-4 text-indigo-600" />
                     )}
                     <span>{uploading ? "Uploading..." : buttonText}</span>
                 </button>
 
                 {error && (
-                    <div className="absolute left-0 top-full mt-1 text-[11px] font-medium text-rose-400">
+                    <div className="absolute left-0 top-full mt-1.5 whitespace-nowrap text-[11px] font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                         {error}
                     </div>
                 )}
@@ -117,35 +117,35 @@ export default function ImageKitUploader({
 
             <div
                 onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 p-6 text-center transition hover:border-indigo-500 hover:bg-slate-800/40"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/20"
             >
                 {uploading ? (
                     <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                        <p className="text-sm font-medium text-slate-300">Uploading file to ImageKit...</p>
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                        <p className="text-xs font-semibold text-slate-700">Uploading file to ImageKit...</p>
                     </div>
                 ) : preview ? (
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                         <div className="text-left">
-                            <p className="text-sm font-semibold text-white">{preview.name}</p>
-                            <p className="text-xs text-slate-400">Upload complete!</p>
+                            <p className="text-xs font-bold text-slate-800">{preview.name}</p>
+                            <p className="text-[11px] text-emerald-600">Upload complete!</p>
                         </div>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
                             <ImageIcon className="h-5 w-5" />
                         </div>
-                        <p className="text-sm font-medium text-slate-200">
+                        <p className="text-xs font-bold text-slate-800">
                             Click to upload image or document
                         </p>
-                        <p className="text-xs text-slate-500">PNG, JPG, PDF, ZIP up to 20MB</p>
+                        <p className="text-[11px] text-slate-400">PNG, JPG, PDF, ZIP up to 20MB</p>
                     </div>
                 )}
             </div>
 
-            {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
+            {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
         </div>
     );
 }

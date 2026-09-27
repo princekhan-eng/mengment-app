@@ -1,71 +1,110 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Code2, Mail, UserRound, Loader2 } from "lucide-react";
+import { ArrowLeft, Code2, Mail, UserRound, Loader2, Search, Plus } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useDevelopers } from "@/hooks/useEmployees";
 
 function ManagerDevelopersContent() {
-    const { data: developers = [], isLoading: loading } = useDevelopers();
+    const { data: rawDevelopers = [], isLoading: loading } = useDevelopers();
+    const [search, setSearch] = useState("");
+
+    const developers = useMemo(() => {
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const dev of rawDevelopers) {
+            const key = dev._id || dev.employeeId || dev.email;
+            if (key && !seen.has(key)) {
+                seen.add(key);
+                deduped.push(dev);
+            }
+        }
+        return deduped;
+    }, [rawDevelopers]);
+
+    const filtered = developers.filter((dev) =>
+        dev.name?.toLowerCase().includes(search.toLowerCase()) ||
+        dev.email?.toLowerCase().includes(search.toLowerCase()) ||
+        dev.employeeId?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-5">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/dashboard/manager"
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                        >
-                            <ArrowLeft size={18} />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                                <Code2 className="text-blue-500" size={22} />
-                                My Assigned Developers
-                            </h1>
-                            <p className="text-xs text-slate-400">
-                                View developers on your team, check status, assign tasks, and send direct messages.
-                            </p>
-                        </div>
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shadow-xs">
+                        <Code2 size={20} />
                     </div>
-
-                    <NotificationCenter currentUserId="manager_id" />
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            Assigned Developers
+                            <span className="text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 px-2 py-0.5 rounded-full">
+                                {developers.length} Developers
+                            </span>
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                            Software engineers assigned to your sprints and projects
+                        </p>
+                    </div>
+                </div>
+            </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="relative w-full sm:w-80">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Filter by name, ID, or email..."
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none shadow-xs"
+                        />
+                    </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
+                <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
                     {loading ? (
-                        <div className="p-12 text-center text-slate-400 flex flex-col items-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-                            Loading developers...
+                        <div className="p-16 text-center text-slate-500 flex flex-col items-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+                            <p className="text-xs font-semibold">Loading developers...</p>
                         </div>
-                    ) : developers.length === 0 ? (
-                        <div className="p-12 text-center text-slate-500">No developers assigned to your team yet.</div>
+                    ) : filtered.length === 0 ? (
+                        <div className="p-16 text-center text-slate-400 text-xs">No developers found.</div>
                     ) : (
-                        <div className="divide-y divide-slate-800">
-                            {developers.map((dev) => (
-                                <div key={dev._id} className="p-5 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
-                                            {dev.name.charAt(0).toUpperCase()}
+                        <div className="divide-y divide-slate-100">
+                            {filtered.map((dev) => (
+                                <div key={dev._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition">
+                                    <div className="flex items-center gap-3.5">
+                                        <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-sm border border-blue-100 shadow-xs shrink-0">
+                                            {dev.name?.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-slate-100 text-sm">{dev.name}</h3>
-                                            <p className="text-xs text-slate-400">{dev.employeeId} • {dev.email}</p>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-slate-900 text-sm">{dev.name}</h3>
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                                    dev.isActive
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        : "bg-rose-50 text-rose-700 border-rose-200"
+                                                }`}>
+                                                    {dev.isActive ? "Active" : "Inactive"}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                <strong className="text-slate-700">{dev.employeeId}</strong> • {dev.email}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <Link
                                             href={`/dashboard/manager/messages?employeeId=${dev._id}`}
-                                            className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-200 hover:bg-slate-700"
+                                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 shadow-xs transition"
                                         >
                                             Message
                                         </Link>
                                         <Link
                                             href={`/dashboard/manager/createtask?employeeId=${dev._id}`}
-                                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-xs text-white hover:bg-blue-500"
+                                            className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs"
                                         >
                                             Assign Task
                                         </Link>
@@ -75,14 +114,17 @@ function ManagerDevelopersContent() {
                         </div>
                     )}
                 </div>
-            </div>
         </div>
     );
 }
 
 export default function ManagerDevelopersPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm">
+                Loading developers...
+            </div>
+        }>
             <ManagerDevelopersContent />
         </Suspense>
     );

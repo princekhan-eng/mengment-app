@@ -8,9 +8,11 @@ import {
     LockKeyhole,
     ShieldCheck,
 } from "lucide-react";
-import router from "next/router";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function ForgotPasswordPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
@@ -35,23 +37,15 @@ export default function ForgotPasswordPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(
-                    data.message || "Something went wrong"
-                );
+                throw new Error(data.message || "Something went wrong");
             }
 
-            setMessage(
-                "If an account exists with this email, a password reset link has been sent."
-            );
-            router.push(`/auth/verify?email=${encodeURIComponent(
-                email
-            )}`);
+            setMessage("If an account exists with this email, a password reset link has been sent.");
+            router.push(`/auth/verfiy?email=${encodeURIComponent(email)}`);
             setEmail("");
         } catch (error) {
             setError(
-                error instanceof Error
-                    ? error.message
-                    : "Something went wrong"
+                error instanceof Error ? error.message : "Something went wrong"
             );
         } finally {
             setLoading(false);
@@ -59,145 +53,98 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <main className="min-h-screen bg-slate-950 text-white">
-
-
-
-            {/* CONTENT */}
-            <section className="flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-10">
-
+        <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center px-4 py-12">
+            <section className="flex items-center justify-center">
                 <div className="w-full max-w-md">
-
-                    {/* ICON */}
                     <div className="mb-6 flex justify-center">
-
-                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
-                            <LockKeyhole size={30} />
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-xs">
+                            <LockKeyhole size={28} />
                         </div>
-
                     </div>
 
-                    {/* HEADING */}
                     <div className="mb-8 text-center">
-
-                        <h1 className="text-3xl font-bold">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                             Forgot your password?
                         </h1>
-
-                        <p className="mt-3 leading-6 text-slate-400">
-                            Enter your email address and we'll send you
-                            a secure link to reset your password.
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            Enter your email address and we'll send you an OTP verification code.
                         </p>
-
                     </div>
 
-                    {/* CARD */}
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
-
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl sm:p-9">
                         {error && (
-                            <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                            <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
                                 {error}
                             </div>
                         )}
 
                         {message && (
-                            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-400">
+                            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
                                 {message}
                             </div>
                         )}
 
-                        <form
-                            onSubmit={handleSubmit}
-                            className="space-y-5"
-                        >
-
-                            {/* EMAIL */}
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-
                                 <label
                                     htmlFor="email"
-                                    className="mb-2 block text-sm font-medium text-slate-300"
+                                    className="mb-1.5 block text-xs font-semibold text-slate-700"
                                 >
-                                    Email address
+                                    Work Email Address
                                 </label>
 
                                 <div className="relative">
-
                                     <Mail
-                                        size={18}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                                        size={16}
+                                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     />
 
                                     <input
                                         id="email"
-                                        name="email"
                                         type="email"
                                         value={email}
-                                        onChange={(e) =>
-                                            setEmail(e.target.value)
-                                        }
+                                        onChange={(e) => setEmail(e.target.value)}
                                         placeholder="you@company.com"
-                                        autoComplete="email"
                                         required
-                                        className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                        disabled={loading}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
                                     />
-
                                 </div>
-
                             </div>
 
-                            {/* BUTTON */}
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 mt-2"
                             >
-
                                 {loading ? (
-                                    "Sending reset link..."
+                                    "Sending OTP..."
                                 ) : (
                                     <>
-                                        Send reset link
-
-                                        <ArrowRight
-                                            size={18}
-                                            className="transition-transform group-hover:translate-x-1"
-                                        />
+                                        Send Reset Code
+                                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                                     </>
                                 )}
-
                             </button>
-
                         </form>
 
-                        {/* BACK TO LOGIN */}
-                        <div className="mt-7 text-center">
-
-                            <a
+                        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+                            <Link
                                 href="/auth/login"
-                                className="inline-flex items-center gap-2 text-sm font-medium text-indigo-400 transition hover:text-indigo-300"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition"
                             >
-                                <ArrowLeft size={16} />
-                                Back to login
-                            </a>
-
+                                <ArrowLeft size={14} />
+                                Back to sign in
+                            </Link>
                         </div>
-
                     </div>
 
-                    {/* SECURITY */}
-                    <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600">
-
-                        <ShieldCheck size={14} />
-
-                        Your password reset is handled securely.
-
+                    <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+                        <ShieldCheck size={14} className="text-emerald-500" />
+                        Secure identity verification
                     </div>
-
                 </div>
-
             </section>
-
         </main>
     );
 }

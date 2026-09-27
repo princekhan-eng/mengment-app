@@ -6,9 +6,11 @@ import {
     Eye,
     EyeOff,
     ArrowRight,
+    ArrowLeft,
     ShieldCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
 
 export default function ResetPasswordPage() {
@@ -20,25 +22,20 @@ export default function ResetPasswordPage() {
 
     const [showOldPassword, setShowOldPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] =
-        useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
-    const handleSubmit = async (
-        e: FormEvent<HTMLFormElement>
-    ) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         setError("");
         setMessage("");
 
         if (newPassword.length < 8) {
-            setError(
-                "New password must contain at least 8 characters."
-            );
+            setError("New password must contain at least 8 characters.");
             return;
         }
 
@@ -48,9 +45,7 @@ export default function ResetPasswordPage() {
         }
 
         if (oldPassword === newPassword) {
-            setError(
-                "New password must be different from your old password."
-            );
+            setError("New password must be different from your old password.");
             return;
         }
 
@@ -58,240 +53,166 @@ export default function ResetPasswordPage() {
 
         try {
             const response = await axios.post(
-                "/APi/auth/resetpassword",
+                "/API/auth/resetpassword",
                 {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        oldPassword,
-                        newPassword,
-                    }),
+                    oldPassword,
+                    newPassword,
+                },
+                {
+                    withCredentials: true,
                 }
             );
 
-
-
-            if (!response.data.ok) {
-                throw new Error(
-                    response.data.message ||
-                    "Failed to change password."
-                );
+            if (!response.data.success && !response.data.ok) {
+                throw new Error(response.data.message || "Failed to change password.");
             }
 
-            setMessage(
-                "Password changed successfully."
-            );
-
+            setMessage("Password changed successfully.");
             setOldPassword("");
             setNewPassword("");
             setConfirmPassword("");
 
-            // Optional
-            // router.push("/dashboard");
-
+            setTimeout(() => {
+                router.push("/auth/login");
+            }, 1200);
         } catch (error) {
-            setError(
-                error instanceof Error
-                    ? error.message
-                    : "Something went wrong."
-            );
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || "Failed to reset password.");
+            } else if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError("Something went wrong.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <main className="min-h-screen bg-slate-950 text-white">
-
-
-
-            {/* CONTENT */}
-            <section className="flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-10">
-
+        <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center px-4 py-12">
+            <section className="flex items-center justify-center">
                 <div className="w-full max-w-md">
-
-                    {/* HEADER */}
-                    <div className="mb-8 text-center">
-
-                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
-                            <ShieldCheck size={30} />
+                    <div className="mb-6 flex justify-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-xs">
+                            <Lock size={28} />
                         </div>
-
-                        <h2 className="text-3xl font-bold">
-                            Change password
-                        </h2>
-
-                        <p className="mt-3 text-sm leading-6 text-slate-400">
-                            Update your password to keep your
-                            ManageHub account secure.
-                        </p>
-
                     </div>
 
-                    {/* CARD */}
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Change Password
+                        </h1>
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            Update your login credentials securely
+                        </p>
+                    </div>
 
-                        {/* ERROR */}
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl sm:p-9">
                         {error && (
-                            <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-400">
+                            <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
                                 {error}
                             </div>
                         )}
 
-                        {/* SUCCESS */}
                         {message && (
-                            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-400">
+                            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
                                 {message}
                             </div>
                         )}
 
-                        <form
-                            onSubmit={handleSubmit}
-                            className="space-y-5"
-                        >
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                                    Current Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showOldPassword ? "text" : "password"}
+                                        value={oldPassword}
+                                        onChange={(e) => setOldPassword(e.target.value)}
+                                        placeholder="Enter current password"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-3.5 pr-10 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowOldPassword(!showOldPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
 
-                            {/* OLD PASSWORD */}
-                            <PasswordInput
-                                id="oldPassword"
-                                label="Current password"
-                                placeholder="Enter current password"
-                                value={oldPassword}
-                                onChange={setOldPassword}
-                                show={showOldPassword}
-                                setShow={setShowOldPassword}
-                            />
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                                    New Password (min. 8 characters)
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showNewPassword ? "text" : "password"}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="Enter new password"
+                                        required
+                                        minLength={8}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-3.5 pr-10 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
 
-                            {/* NEW PASSWORD */}
-                            <PasswordInput
-                                id="newPassword"
-                                label="New password"
-                                placeholder="Enter new password"
-                                value={newPassword}
-                                onChange={setNewPassword}
-                                show={showNewPassword}
-                                setShow={setShowNewPassword}
-                            />
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                                    Confirm New Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="Confirm new password"
+                                        required
+                                        minLength={8}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-3.5 pr-10 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
 
-                            {/* CONFIRM PASSWORD */}
-                            <PasswordInput
-                                id="confirmPassword"
-                                label="Confirm new password"
-                                placeholder="Confirm new password"
-                                value={confirmPassword}
-                                onChange={setConfirmPassword}
-                                show={showConfirmPassword}
-                                setShow={setShowConfirmPassword}
-                            />
-
-                            {/* BUTTON */}
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 mt-2"
                             >
-                                {loading ? (
-                                    "Updating password..."
-                                ) : (
-                                    <>
-                                        Update password
-
-                                        <ArrowRight
-                                            size={18}
-                                            className="transition-transform group-hover:translate-x-1"
-                                        />
-                                    </>
-                                )}
+                                {loading ? "Updating password..." : "Update Password"}
                             </button>
-
                         </form>
 
+                        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+                            <Link
+                                href="/auth/login"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition"
+                            >
+                                <ArrowLeft size={14} />
+                                Back to sign in
+                            </Link>
+                        </div>
                     </div>
-
-                    {/* SECURITY */}
-                    <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600">
-
-                        <ShieldCheck size={14} />
-
-                        Never share your password with anyone.
-
-                    </div>
-
                 </div>
-
             </section>
-
         </main>
-    );
-}
-
-
-/* =========================
-   PASSWORD INPUT
-========================= */
-
-function PasswordInput({
-    id,
-    label,
-    placeholder,
-    value,
-    onChange,
-    show,
-    setShow,
-}: {
-    id: string;
-    label: string;
-    placeholder: string;
-    value: string;
-    onChange: (value: string) => void;
-    show: boolean;
-    setShow: (value: boolean) => void;
-}) {
-    return (
-        <div>
-
-            <label
-                htmlFor={id}
-                className="mb-2 block text-sm font-medium text-slate-300"
-            >
-                {label}
-            </label>
-
-            <div className="relative">
-
-                <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-
-                <input
-                    id={id}
-                    name={id}
-                    type={show ? "text" : "password"}
-                    value={value}
-                    onChange={(e) =>
-                        onChange(e.target.value)
-                    }
-                    placeholder={placeholder}
-                    autoComplete="new-password"
-                    required
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3.5 pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-
-                <button
-                    type="button"
-                    onClick={() => setShow(!show)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-300"
-                >
-                    {show ? (
-                        <EyeOff size={18} />
-                    ) : (
-                        <Eye size={18} />
-                    )}
-                </button>
-
-            </div>
-
-        </div>
     );
 }
