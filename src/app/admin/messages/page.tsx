@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 import TeamChat, { ChatUser } from "@/components/TeamChat";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 
 export default function AdminMessagesPage() {
     const [currentUser, setCurrentUser] = useState<ChatUser | null>(null);
@@ -74,12 +74,12 @@ export default function AdminMessagesPage() {
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex items-center justify-between pb-2">
                 <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900">
-                        <Shield className="text-rose-600" size={22} />
-                        Admin Global Team Communication
-                    </h2>
+                    <h1 className="text-xl font-bold flex items-center gap-2 text-slate-900">
+                        <MessageSquare className="text-rose-600" size={22} />
+                        Team Messages & Collaboration
+                    </h1>
                     <p className="text-xs text-slate-500 mt-0.5">
-                        Monitor company channels and direct message any manager, developer, or tester.
+                        Direct message managers, developers, and QA testers in real-time.
                     </p>
                 </div>
             </div>

@@ -358,50 +358,43 @@ export default function CommonDashboardLayout({
         return pathname.startsWith(href);
     };
 
-    // Calculate dynamic page title / breadcrumbs
-    const currentTitle = useMemo(() => {
-        for (const sec of roleConfig.sections) {
-            for (const item of sec.items) {
-                if (isItemActive(item.href)) {
-                    return item.label;
-                }
-            }
-        }
-        return `${roleConfig.brandName} Console`;
-    }, [pathname, roleConfig]);
-
     const displayName = user?.name || roleConfig.roleLabel;
     const initialLetter = displayName.charAt(0).toUpperCase();
 
     // Reusable Sidebar Content
     const SidebarContent = () => (
         <div className="flex h-full flex-col bg-white">
-            {/* Brand Logo & Title */}
-            <div className="flex h-18 sm:h-20 items-center justify-between border-b border-slate-100 px-6">
-                <div className="flex items-center gap-3">
+            {/* Brand Logo, Notifications & Title */}
+            <div className="flex h-18 sm:h-20 items-center justify-between border-b border-slate-100 px-5">
+                <div className="flex items-center gap-3 min-w-0">
                     <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr ${roleConfig.accentGradient} text-white font-bold shadow-md ${roleConfig.accentGlow}`}
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr ${roleConfig.accentGradient} text-white font-bold shadow-md ${roleConfig.accentGlow}`}
                     >
                         <BrandIcon size={20} />
                     </div>
-                    <div>
-                        <h2 className="font-extrabold text-slate-900 text-base tracking-tight">
+                    <div className="min-w-0">
+                        <h2 className="font-extrabold text-slate-900 text-base tracking-tight truncate">
                             {roleConfig.brandName}
                         </h2>
-                        <p className="text-[10px] text-slate-400 font-medium">
+                        <p className="text-[10px] text-slate-400 font-medium truncate">
                             {roleConfig.brandSubtitle}
                         </p>
                     </div>
                 </div>
 
-                {/* Close Button for Mobile Drawer */}
-                <button
-                    onClick={() => setMobileOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden"
-                    title="Close Navigation"
-                >
-                    <X size={20} />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <NotificationCenter
+                        currentUserId={user?.id || user?._id || `${role}_user`}
+                    />
+                    {/* Close Button for Mobile Drawer */}
+                    <button
+                        onClick={() => setMobileOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden"
+                        title="Close Navigation"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* User Profile Summary Card */}
@@ -413,13 +406,17 @@ export default function CommonDashboardLayout({
                         {initialLetter}
                     </div>
                     <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-between gap-1">
                             <p className="font-bold text-slate-900 text-xs truncate">
                                 {displayName}
                             </p>
-                            <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Online" />
+                            <span
+                                className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider ${roleConfig.badgeColor}`}
+                            >
+                                {role}
+                            </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate">
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
                             {user?.employeeId ? `ID: ${user.employeeId}` : roleConfig.roleLabel}
                         </p>
                     </div>
@@ -508,62 +505,30 @@ export default function CommonDashboardLayout({
 
             {/* Main Area */}
             <div className="flex-1 min-w-0 flex flex-col">
-                {/* Unified Common Top Sticky Header */}
-                <header className="sticky top-0 z-30 flex h-18 sm:h-20 items-center justify-between border-b border-slate-200/80 bg-white/85 px-4 sm:px-6 backdrop-blur-md lg:px-8">
-                    {/* Left: Mobile Toggle & Page Title / Breadcrumb */}
-                    <div className="flex items-center gap-3">
+                {/* Mobile-Only Header Bar (Hidden on Desktop) */}
+                <header className="lg:hidden sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md">
+                    <div className="flex items-center gap-2.5">
                         <button
                             onClick={() => setMobileOpen(true)}
-                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 lg:hidden shadow-2xs"
+                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-2xs"
                             title="Open Navigation"
                         >
                             <Menu size={18} />
                         </button>
-
-                        <div>
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hidden sm:flex">
-                                <span>{roleConfig.brandName}</span>
-                                <span>/</span>
-                                <span className="text-slate-600">{roleConfig.brandSubtitle}</span>
+                        <div className="flex items-center gap-2">
+                            <div
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr ${roleConfig.accentGradient} text-white font-bold text-xs shadow-xs`}
+                            >
+                                <BrandIcon size={16} />
                             </div>
-                            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                                {currentTitle}
-                            </h1>
+                            <span className="font-bold text-slate-900 text-sm tracking-tight">{roleConfig.brandName}</span>
                         </div>
                     </div>
 
-                    {/* Right: Role Pill, Notification Center & Profile Mini */}
-                    <div className="flex items-center gap-2.5 sm:gap-3.5">
-                        {/* Role Indicator Pill */}
-                        <span
-                            className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider shadow-2xs ${roleConfig.badgeColor}`}
-                        >
-                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                            {role}
-                        </span>
-
-                        {/* Common Notification Center */}
+                    <div className="flex items-center gap-2">
                         <NotificationCenter
                             currentUserId={user?.id || user?._id || `${role}_user`}
                         />
-
-                        {/* User Profile Avatar with Direct Logout Link */}
-                        <div className="flex items-center gap-2 pl-1 border-l border-slate-200">
-                            <div
-                                className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr ${roleConfig.accentGradient} text-white font-bold text-xs shadow-xs`}
-                                title={displayName}
-                            >
-                                {initialLetter}
-                            </div>
-                            <div className="hidden xl:block text-left">
-                                <p className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[120px]">
-                                    {displayName}
-                                </p>
-                                <p className="text-[10px] text-slate-400 capitalize">
-                                    {role}
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 </header>
 

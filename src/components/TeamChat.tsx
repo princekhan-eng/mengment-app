@@ -48,7 +48,6 @@ interface MessageItem {
 }
 
 const DEFAULT_CHANNELS = [
-    { id: "general", name: "General Announcements", desc: "Company-wide updates & general discussion" },
     { id: "dev-tasks", name: "Dev Team Chat", desc: "Developer tasks & codebase support" },
     { id: "qa-bugs", name: "QA Testing & Bugs", desc: "Bug reports & test verifications" },
 ];
@@ -58,7 +57,7 @@ import { useTeamMessages } from "@/hooks/useTeamMessages";
 
 export default function TeamChat({ currentUser, teamMembers = [] }: TeamChatProps) {
     const queryClient = useQueryClient();
-    const [selectedRoom, setSelectedRoom] = useState<string>("general");
+    const [selectedRoom, setSelectedRoom] = useState<string>("dev-tasks");
     const [selectedRecipient, setSelectedRecipient] = useState<ChatUser | null>(null);
 
     const {
